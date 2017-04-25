@@ -1,0 +1,8 @@
+{
+    "WebApp": {
+        "Contributors": ["web-dev", "Pam", "Hans"]
+    },
+    "Backend": {
+        "Contributors": ["backend-dev", "Stan", "Hans"]
+    }
+}
