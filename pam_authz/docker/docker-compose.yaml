@@ -1,0 +1,29 @@
+version: '2'
+services:
+  opa:
+    image: openpolicyagent/opa:0.4.8
+    ports:
+      - 8181:8181
+    command:
+      - "run"
+      - "--server"
+      - "--log-level=debug"
+      - "ssh.rego"
+      - "sudo.rego"
+      - "io.directory.users:/users.json"
+      - "io.vcs.contributors:/contributors.json"
+    volumes:
+      - ./policy/ssh.rego:/ssh.rego
+      - ./policy/sudo.rego:/sudo.rego
+      - ./policy/users.json:/users.json
+      - ./policy/contributors.json:/contributors.json
+
+  webapp:
+    image: openpolicyagent/ssh-webapp
+    ports:
+      - "2222:22"
+
+  backend:
+    image: openpolicyagent/ssh-backend
+    ports:
+      - "2223:22"
