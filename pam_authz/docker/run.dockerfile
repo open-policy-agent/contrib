@@ -38,8 +38,8 @@ COPY /pam.d/* /etc/pam.d/
 COPY /sshd_config /etc/ssh/sshd_config
 COPY pam_authz.so /lib/security/pam_authz.so
 
-RUN sed -i "s/HOST_UUID/$identifier/" /etc/pam.d/sudo && \
-    sed -i "s/HOST_UUID/$identifier/" /etc/pam.d/sshd
+#RUN sed -i "s/HOST_ID/$identifier/" /etc/pam.d/sudo && \
+#    sed -i "s/HOST_ID/$identifier/" /etc/pam.d/sshd
 
 # Delete the ssh key common to all users
 RUN rm -f /tmp/your_key.pub

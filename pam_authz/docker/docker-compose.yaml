@@ -19,11 +19,15 @@ services:
       - ./policy/contributors.json:/contributors.json
 
   webapp:
-    image: openpolicyagent/ssh-webapp
+    image: openpolicyagent/demo-pam
     ports:
       - "2222:22"
+    volumes:
+      - ./etc/webapp_host_id:/etc/host_identity.json
 
   backend:
-    image: openpolicyagent/ssh-backend
+    image: openpolicyagent/demo-pam
     ports:
       - "2223:22"
+    volumes:
+      - ./etc/backend_host_id:/etc/host_identity.json
