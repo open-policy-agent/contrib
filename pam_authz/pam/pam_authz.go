@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log/syslog"
 	"net/http"
 	"runtime"
@@ -20,6 +21,7 @@ import (
 const (
 	defaultUrl   = "http://localhost:8181"
 	defaultGroup = ""
+	defaultHostFile = "/etc/host_identity.json"
 )
 
 // AuthResult is the result of the authentcate function.
@@ -36,7 +38,7 @@ const (
 type authzPolicyInput struct {
 	Input struct {
 		User         string `json:"user"`
-		HostIdentity string `json:"host_identity"`
+		HostIdentity interface{} `json:"host_identity"`
 		Group        string `json:"group"`
 	} `json:"input"`
 }
@@ -104,8 +106,18 @@ func authorize(w io.Writer, uid int, username, url, policyPath, group, hostIdent
 
 	req := &authzPolicyInput{}
 	req.Input.User = username
-	req.Input.HostIdentity = hostIdentity
 	req.Input.Group = group
+
+	raw, err := ioutil.ReadFile(defaultHostFile)
+	if err != nil {
+        fmt.Fprintf(w, "Error reading HostFile: %s\n", err)
+        return AuthError
+    }
+    err = json.Unmarshal(raw, &req.Input.HostIdentity)
+    if err != nil {
+    	fmt.Fprintf(w, "Error decoding HostFile into JSON: %s\n", err)
+    	return AuthError
+    }
 
 	response, err := getPolicyDecision(url, policyPath, req, w)
 	if err != nil {
