@@ -3,7 +3,7 @@ package httpapi.authz
 # Datasource for management
 #import data.manager
 # HTTP API request
-manager = {"alice": "bob", "charlie": "bob"}
+manager = {"alice": "bob"}
 
 import input as http_api
 # http_api = {
