@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	defaultUrl   = "http://localhost:8181"
-	defaultGroup = ""
+	defaultUrl      = "http://localhost:8181"
 	defaultHostFile = "/etc/host_identity.json"
 )
 
@@ -37,9 +36,8 @@ const (
 // Input to the OPA policy
 type authzPolicyInput struct {
 	Input struct {
-		User         string `json:"user"`
+		User         string      `json:"user"`
 		HostIdentity interface{} `json:"host_identity"`
-		Group        string `json:"group"`
 	} `json:"input"`
 }
 
@@ -102,22 +100,22 @@ func getPolicyDecision(policyEngineURL string, path string, input *authzPolicyIn
 }
 
 // authorize uses the PAM-configured fields and calls out to OPA to make authorization decisions
-func authorize(w io.Writer, uid int, username, url, policyPath, group, hostIdentity string) AuthResult {
+func authorize(w io.Writer, uid int, username, url, policyPath, identityFilePath string) AuthResult {
 
 	req := &authzPolicyInput{}
 	req.Input.User = username
-	req.Input.Group = group
 
-	raw, err := ioutil.ReadFile(defaultHostFile)
+	// indentifyFilePath is expected to be json, unmarshal it
+	raw, err := ioutil.ReadFile(identityFilePath)
 	if err != nil {
-        fmt.Fprintf(w, "Error reading HostFile: %s\n", err)
-        return AuthError
-    }
-    err = json.Unmarshal(raw, &req.Input.HostIdentity)
-    if err != nil {
-    	fmt.Fprintf(w, "Error decoding HostFile into JSON: %s\n", err)
-    	return AuthError
-    }
+		fmt.Fprintf(w, "Error reading HostFile: %s\n", err)
+		return AuthError
+	}
+	err = json.Unmarshal(raw, &req.Input.HostIdentity)
+	if err != nil {
+		fmt.Fprintf(w, "Error decoding HostFile into JSON: %s\n", err)
+		return AuthError
+	}
 
 	response, err := getPolicyDecision(url, policyPath, req, w)
 	if err != nil {
@@ -143,8 +141,7 @@ func pamAuthorize(w io.Writer, uid int, username string, argv []string) AuthResu
 
 	url := defaultUrl
 	policyPath := ""
-	hostIdentity := ""
-	group := defaultGroup
+	identityFilePath := defaultHostFile
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -155,12 +152,9 @@ func pamAuthorize(w io.Writer, uid int, username string, argv []string) AuthResu
 		case "policy_path":
 			policyPath = opt[1]
 			pamLog("policy_path set to %s", policyPath)
-		case "group":
-			group = opt[1]
-			pamLog("group set to %s", group)
-		case "host_identity":
-			hostIdentity = opt[1]
-			pamLog("identifier set to %s", hostIdentity)
+		case "identity_file_path":
+			identityFilePath = opt[1]
+			pamLog("identity_file_path set to %s", identityFilePath)
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
@@ -169,7 +163,7 @@ func pamAuthorize(w io.Writer, uid int, username string, argv []string) AuthResu
 	// Call out to OPA for the allow/deny decision
 
 	if url != "" && policyPath != "" {
-		return authorize(w, uid, username, url, policyPath, group, hostIdentity)
+		return authorize(w, uid, username, url, policyPath, identityFilePath)
 	}
 
 	return AuthError
