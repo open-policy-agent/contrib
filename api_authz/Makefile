@@ -5,7 +5,7 @@ VERSION := 0.1-dev
 all: image
 
 image:
-	cd docker; docker build -t openpolicyagent/demo-restful-api:latest -t openpolicyagent/demo-restful-api:$(VERSION) \
+	cd docker; docker build -t openpolicyagent/demo-http-api:latest -t openpolicyagent/demo-http-api:$(VERSION) \
 		-f Dockerfile .
 up:
 	docker-compose -f docker/docker-compose.yaml up

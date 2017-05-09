@@ -13,7 +13,7 @@ services:
       - ./policy/api_authz.rego:/api_authz.rego
 
   api_server:
-    image: openpolicyagent/demo-restful-api:latest
+    image: openpolicyagent/demo-http-api:latest
     ports:
       - 5000:5000
     environment:
