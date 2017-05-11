@@ -20,7 +20,7 @@ allow {
 # Authorize users who contributed to the app running on this server
 # Users who match this rule or the rule above will be given access
 allow {
-    user = contributors[host_identity].Contributors[_]
+    user = contributors[host_identity.host_id].Contributors[_]
 }
 
 # If the user is not authorized, then include an error message in the response

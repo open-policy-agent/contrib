@@ -81,7 +81,11 @@ func getPolicyDecision(policyEngineURL string, path string, input *authzPolicyIn
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("unexpected status code: %v", resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
