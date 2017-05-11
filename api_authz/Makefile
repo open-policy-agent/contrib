@@ -11,8 +11,7 @@ build: image
 image:
 	docker build -t $(REPOSITORY):latest \
 		-t $(REPOSITORY):$(VERSION) \
-		-f ./docker/Dockerfile \
-		.
+		./docker
 
 .PHONY: push
 push: build
