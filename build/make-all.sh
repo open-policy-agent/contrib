@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 TARGET=$1
 
 if [ -z "${TARGET}" ]; then
