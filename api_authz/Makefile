@@ -1,11 +1,24 @@
+REPOSITORY := openpolicyagent/demo-restful-api
 VERSION := 0.1-dev
 
-.PHONY: all image up
-
+.PHONY: all
 all: image
 
+.PHONY: build
+build: image
+
+.PHONY: image
 image:
-	cd docker; docker build -t openpolicyagent/demo-restful-api:latest -t openpolicyagent/demo-restful-api:$(VERSION) \
-		-f Dockerfile .
+	docker build -t $(REPOSITORY):latest \
+		-t $(REPOSITORY):$(VERSION) \
+		-f ./docker/Dockerfile \
+		.
+
+.PHONY: push
+push: build
+	docker push $(REPOSITORY):$(VERSION)
+	docker push $(REPOSITORY):latest
+
+.PHONY: up
 up:
 	docker-compose -f docker/docker-compose.yaml up
