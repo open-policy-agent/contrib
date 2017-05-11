@@ -1,8 +1,8 @@
 {
-    "WebApp": {
-        "Contributors": ["web-dev", "Pam", "Hans"]
+    "frontend": {
+        "Contributors": ["frontend-dev", "Pam", "Hans"]
     },
-    "Backend": {
+    "backend": {
         "Contributors": ["backend-dev", "Stan", "Hans"]
     }
 }

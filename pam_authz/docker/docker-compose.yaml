@@ -18,12 +18,12 @@ services:
       - ./policy/users.json:/users.json
       - ./policy/contributors.json:/contributors.json
 
-  webapp:
+  frontend:
     image: openpolicyagent/demo-pam
     ports:
       - "2222:22"
     volumes:
-      - ./etc/webapp_host_id:/etc/host_identity.json
+      - ./etc/frontend_host_id:/etc/host_identity.json
 
   backend:
     image: openpolicyagent/demo-pam

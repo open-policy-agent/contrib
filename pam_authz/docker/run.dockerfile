@@ -28,7 +28,7 @@ RUN cat /tmp/your_key.pub >> /root/.ssh/authorized_keys
 
 # Create some user accounts. All of these users use the same ssh key for authentication
 COPY create_user.sh /create_user.sh
-RUN /create_user.sh web-dev backend-dev ops-dev Sam Jan Stan Pam Hans
+RUN /create_user.sh frontend-dev backend-dev ops
 
 # Replace the default ssh and sudo PAM configs. Our config requires the PAM authz
 # authorization module and disables standard linux authorization
@@ -37,9 +37,6 @@ COPY /pam.d/* /etc/pam.d/
 # Replace the default sshd config with our config. These enables PAM in sshd
 COPY /sshd_config /etc/ssh/sshd_config
 COPY pam_authz.so /lib/security/pam_authz.so
-
-#RUN sed -i "s/HOST_ID/$identifier/" /etc/pam.d/sudo && \
-#    sed -i "s/HOST_ID/$identifier/" /etc/pam.d/sshd
 
 # Delete the ssh key common to all users
 RUN rm -f /tmp/your_key.pub
