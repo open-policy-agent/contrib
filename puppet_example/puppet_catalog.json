@@ -1,0 +1,48 @@
+{
+  "input": {
+    "puppet": {
+      "catalog": {
+        "name": "example",
+        "version": 1489189468,
+        "code_id": null,
+        "catalog_uuid": "9f515de1-aed1-4ac2-a36d-9839dff823f3",
+        "catalog_format": 1,
+        "environment": "production",
+        "resources": [
+          {
+            "type": "File",
+            "title": "/etc/app/config",
+            "tags": [
+              "file",
+              "class",
+              "foo"
+            ],
+            "file": "/code/puppet/example_app.pp",
+            "line": 9,
+            "exported": false,
+            "parameters": {
+              "ensure": "file",
+              "content": "\"Today is a good day\""
+            }
+          },
+          {
+            "type": "File",
+            "title": "/etc/infra/config",
+            "tags": [
+              "file",
+              "class",
+              "bar"
+            ],
+            "file": "/code/puppet/example_infra.pp",
+            "line": 4,
+            "exported": false,
+            "parameters": {
+              "ensure": "file",
+              "content": "\"Tomorrow is another day\""
+            }
+          }
+        ]
+      }
+    }
+  }
+}

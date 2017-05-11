@@ -1,0 +1,90 @@
+{
+  "puppet/example_infra.pp": [
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    },
+    {
+      "Author": "betty@acmecorp.com"
+    }
+  ],
+  "puppet/example_app.pp": [
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    },
+    {
+      "Author": "alice@acmecorp.com"
+    }
+  ]
+}
