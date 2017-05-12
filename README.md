@@ -4,6 +4,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 
 ## Examples and Integrations
 
+- [HTTP/micro-service API authorization with Linkerd](./linkerd_authz)
 - [HTTP API Authorization Example (Python)](./api_authz)
 - [PAM module - SSH and sudo Authorization](./pam_authz)
 
