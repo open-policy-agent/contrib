@@ -8,6 +8,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [HTTP API Authorization Example (Python)](./api_authz)
 - [PAM module - SSH and sudo Authorization](./pam_authz)
 - [Puppet Authorization Example](./puppet_example)
+- [Kubernetes Image Policy Enforcer](./image_enforcer)
 
 ## Contributing
 

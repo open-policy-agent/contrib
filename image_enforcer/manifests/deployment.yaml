@@ -1,0 +1,36 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: image-enforcer
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: image-enforcer
+    spec:
+      containers:
+        - name: clair-layer-sync
+          image: openpolicyagent/clair-layer-sync:0.1-dev
+          imagePullPolicy: Always
+          args:
+          - "-clair-url=http://clairsvc:6060/v1"
+          - "-repository=openpolicyagent/opa,openpolicyagent/clair-layer-sync,library/wordpress"
+        - name: opa
+          image: openpolicyagent/opa:0.4.9
+          args:
+          - "run"
+          - "--server"
+          - "--log-level=info"
+          - "/config/default.rego"
+          ports:
+          - name: http
+            containerPort: 8181
+          volumeMounts:
+          - readOnly: true
+            mountPath: /config
+            name: config
+      volumes:
+        - name: config
+          configMap:
+            name: image-enforcer
