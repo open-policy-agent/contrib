@@ -1,0 +1,13 @@
+{
+  "header": {
+    "alg": "HS256",
+    "typ": "JWT"
+  },
+  "payload": {
+    "azp": "david",
+    "hr": true,
+    "subordinates": [],
+    "user": "david"
+  },
+  "signature": "43a1225b3535c31d60eac756435af86f14f5260487529557a4834ca8c6940cc5"
+}

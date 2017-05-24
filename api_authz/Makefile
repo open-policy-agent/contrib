@@ -21,3 +21,7 @@ push: build
 .PHONY: up
 up:
 	docker-compose -f docker/docker-compose.yaml up
+
+.PHONY: op-token
+up-token:
+	docker-compose -f docker/docker-compose-token.yaml up
