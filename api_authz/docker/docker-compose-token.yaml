@@ -8,9 +8,9 @@ services:
       - "run"
       - "--server"
       - "--log-level=debug"
-      - "api_authz.rego"
+      - "api_authz_token.rego"
     volumes:
-      - ./policy/api_authz.rego:/api_authz.rego
+      - ./policy/api_authz_token.rego:/api_authz_token.rego
 
   api_server:
     image: openpolicyagent/demo-restful-api:latest
