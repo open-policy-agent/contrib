@@ -1,5 +1,5 @@
 REPOSITORY := openpolicyagent/demo-pam
-VERSION := 0.1-dev
+VERSION := 0.2-dev
 
 .PHONY: image
 all: image

@@ -28,7 +28,7 @@ RUN cat /tmp/your_key.pub >> /root/.ssh/authorized_keys
 
 # Create some user accounts. All of these users use the same ssh key for authentication
 COPY create_user.sh /create_user.sh
-RUN /create_user.sh frontend-dev backend-dev ops
+RUN /create_user.sh frontend-dev backend-dev ops alice bob charlie dave eve frank sally 
 
 # Replace the default ssh and sudo PAM configs. Our config requires the PAM authz
 # authorization module and disables standard linux authorization
