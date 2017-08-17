@@ -1,5 +1,5 @@
 REPOSITORY := openpolicyagent/demo-restful-api
-VERSION := 0.1-dev
+VERSION := 0.2
 
 .PHONY: all
 all: image
