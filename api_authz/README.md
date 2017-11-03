@@ -3,7 +3,7 @@
 This directory helps provide fine-grained, policy-based control over who
 can run which RESTful APIs.
 
-A tutorial is available at [openpolicyagent.org/tutorials/http-api-authorization/](http://www.openpolicyagent.org/tutorials/http-api-authorization/).
+A tutorial is available at [HTTP API Authorization](http://www.openpolicyagent.org/docs/http-api-authorization)
 
 
 ## Contents

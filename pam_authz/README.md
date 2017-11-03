@@ -3,7 +3,7 @@
 This directory helps provide fine-grained, policy-based control over who can
 ssh and sudo into each of your servers and containers.
 
-You can find a step-by-step tutorial at [openpolicyagent.org/tutorials/ssh-sudo-authorization/](http://www.openpolicyagent.org/tutorials/ssh-sudo-authorization/).
+You can find a step-by-step tutorial at [SSH and sudo Authorization](http://www.openpolicyagent.org/docs/ssh-and-sudo-authorization).
 
 
 ## Directory contents
