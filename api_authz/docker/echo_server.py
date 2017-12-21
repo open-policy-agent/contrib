@@ -47,7 +47,7 @@ def root(path):
     user_encoded = request.headers.get('Authorization', "Anonymous:none")
     if user_encoded:
         user_encoded = user_encoded.split("Basic ")[1]
-    user, _ = base64.b64decode(user_encoded).split(":")
+    user, _ = base64.b64decode(user_encoded).decode("utf-8").split(":")
     url = opa_url + policy_path
     path_as_array = path.split("/")
     token = request.args["token"] if "token" in request.args else None
