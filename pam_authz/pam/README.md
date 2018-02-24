@@ -11,7 +11,7 @@ linux accounts for that or a user database such as LDAP.
 
 ## Usage
 
-This repo includes a detailed [example usage of the pam_authz module](../docker/README.md),
+This repo includes a detailed [example usage of the pam_authz module](http://www.openpolicyagent.org/docs/ssh-and-sudo-authorization),
 so the instructions here focus on the installation and configuration of the
 PAM module. Details of writing policy to make the authorization decisions are
 found in the docker example.
