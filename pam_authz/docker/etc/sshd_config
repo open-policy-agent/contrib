@@ -2,3 +2,4 @@ PermitRootLogin yes
 ChallengeResponseAuthentication yes
 UsePAM yes
 PasswordAuthentication no
+AuthenticationMethods keyboard-interactive

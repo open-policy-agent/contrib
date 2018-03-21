@@ -12,9 +12,14 @@ RUN rm -f /etc/service/sshd/down
 RUN /etc/my_init.d/00_regen_ssh_host_keys.sh
 
 RUN apt-get update && apt-get install -y \
-    vim \
-    sudo && \
-    rm -rf /var/lib/apt/lists/*
+	vim \
+	sudo && \
+	rm -rf /var/lib/apt/lists/*
+
+# Copy the JSON library contents from the build container and install them.
+COPY jansson_lib /jansson_lib
+RUN tar -xvf /jansson_lib -C /usr/lib && \
+    rm -f /jansson_lib
 
 # Do not cache sudo authorization (that is, check the PAM auth stack every invocation)
 RUN sed -i 's/env_reset/env_reset,timestamp_timeout=0/g' /etc/sudoers
