@@ -1,6 +1,6 @@
-session    required   pam_env.so readenv=1 user_readenv=0
-session    required   pam_env.so readenv=1 envfile=/etc/default/locale user_readenv=0
-
 # Enable the Authz PAM module
 # At image build time, the value of HOST_UUID is replaced with the role of the image (for example, webapp)
-auth required /lib/security/pam_authz.so url=http://opa:8181 policy_path=/v1/data/sudo/authz group=admin
+auth required /lib/security/pam_authz.so url=http://opa:8181 authz_endpoint=/v1/data/common/authz display_endpoint=/v1/data/common/display pull_endpoint=/v1/data/common/pull log_level=debug
+
+session    required   pam_env.so readenv=1 user_readenv=0
+session    required   pam_env.so readenv=1 envfile=/etc/default/locale user_readenv=0

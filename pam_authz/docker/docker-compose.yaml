@@ -12,11 +12,19 @@ services:
       - "sudo.rego"
       - "io.directory.users:/users.json"
       - "io.vcs.contributors:/contributors.json"
+      # Prompt policies.
+      - "display.rego"
+      - "authz.rego"
+      - "pull.rego"
     volumes:
       - ./policy/ssh.rego:/ssh.rego
       - ./policy/sudo.rego:/sudo.rego
       - ./policy/users.json:/users.json
       - ./policy/contributors.json:/contributors.json
+      # Prompt policies.
+      - ./policy/display.rego:/display.rego
+      - ./policy/authz.rego:/authz.rego
+      - ./policy/pull.rego:/pull.rego
 
   frontend:
     image: openpolicyagent/demo-pam
