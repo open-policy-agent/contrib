@@ -12,11 +12,19 @@ services:
       - "sudo.rego"
       - "io.directory.users:/users.json"
       - "io.vcs.contributors:/contributors.json"
+      # Prompt policies.
+      - "display.rego"
+      - "authz.rego"
+      - "pull.rego"
     volumes:
       - ./policy/ssh.rego:/ssh.rego
       - ./policy/sudo.rego:/sudo.rego
       - ./policy/users.json:/users.json
       - ./policy/contributors.json:/contributors.json
+      # Prompt policies.
+      - ./policy/display.rego:/display.rego
+      - ./policy/authz.rego:/authz.rego
+      - ./policy/pull.rego:/pull.rego
 
   frontend:
     image: openpolicyagent/demo-pam
@@ -24,6 +32,11 @@ services:
       - "2222:22"
     volumes:
       - ./etc/frontend_host_id:/etc/host_identity.json
+    environment:
+      - TEST=TODO_REMOVE
+    # This allows strace to work inside the Docker container.
+    cap_add:
+      - ALL # Add all capabilities.
 
   backend:
     image: openpolicyagent/demo-pam

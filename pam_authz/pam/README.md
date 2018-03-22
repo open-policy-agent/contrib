@@ -1,73 +1,275 @@
 # Styra's PAM authorization module
 
 This implements a PAM module that integrates with Open Policy Agent (OPA)
-to make authorization decisions. When invoked, the module queries OPA
-and if no errors are returned, then the action is allowed. This allows
-administrators to implement fine-grained access control.
+to make authorization decisions. When invoked, the module makes an authorizaton
+decision with the help of OPA in three cycles:
 
-This module is not intended to perform authentication. One can use standard
-linux accounts for that or a user database such as LDAP.
+1. *display*: The module asks OPA what should be displayed or prompted to the user,
+   and collects the user responses.
 
+2. *pull*: The module asks OPA what data (files and environment variables) should be pulled
+   from the system, and collects the requested data.
 
-## Usage
+3. *authz*: The module sends all collected data to OPA, and makes the authorization decision
+   based on the response received.
 
-This repo includes a detailed [example usage of the pam_authz module](http://www.openpolicyagent.org/docs/ssh-and-sudo-authorization),
-so the instructions here focus on the installation and configuration of the
-PAM module. Details of writing policy to make the authorization decisions are
-found in the docker example.
-
-### Building the module
+## Building the module
 
 To compile the authz PAM module, the following are needed:
 
-1. [golang compiler](https://golang.org/doc/install) (at least version 1.7)
+1. [PAM development library](http://www.linuxfromscratch.org/blfs/view/svn/postlfs/linux-pam.html).
+   On debian, this can be obtained using `apt-get install libpam0g-dev`.
 
-2. PAM development library. On debian, this can be obtained using
-   `apt-get install libpam0g-dev`.
+2. [cURL library](https://curl.haxx.se/download.html). On debian, this can be obtained
+   using `apt-get install libcurl4-gnutls-dev`
 
-Finally, build the module using `make`. This will automatically obtain the go dependencies.
+3. [jansson library](http://www.digip.org/jansson/).
+
+Preferably, all libraries should be installed under `/usr`, so that the `LD_LIBRARY_PATH` environment
+variable is not required at runtime. This can be done, for example, by running the autoconf
+configuration files with the `prefix` flag during installation:
+
+```shell
+$ ./configure --prefix=/usr
+```
+
+Finally, build the module using `make`.
 
 It is also possible to build the module in a docker container, which only requires that docker
 be installed. See [this README for instructions](../README.md).
 
-### Installation
+## Installation
 
 1. Copy the module to `/lib/security` or wherever PAM modules reside on your
 system.
 
-2. Configure it as an auth or account module, for example, add the following
-line to `/etc/pam.d/sudo`:
+2. Add the PAM module to an application's [PAM configuration](https://linux.die.net/man/5/pam.conf),
+   for example add the following to `/etc/pam.d/sudo`:
 
 ```
-account required /lib/security/pam_authz.so url=http://localhost:8181 policy_path=/v1/data/ssh/authz
+auth required /lib/security/pam_authz.so url=http://opa:8181 authz_endpoint=/v1/data/common/authz display_endpoint=/v1/data/common/display pull_endpoint=/v1/data/common/pull log_level=debug
 ```
 
-Configuration options:
-* `url` - the address of OPA. Defaults to `http://localhost:8181`.
+## Configuration
 
-* `policy_path` - the path to the policy endpoint used for authorization
-  decisions. Required.
+This section breaks down the different pieces in the configuration example above.
 
-* `identity_file_path` - path to a json file. The contents of this file are sent to OPA
-  to be used in the access control policy. For example, this file might contain a single
-  string `"host-uuid"` that indicates the server's ID. Or it could contain an object with
-  multiple fields. The intent is for this information to be used in the authorization
-  policy to make allow or deny decisions. The default value is `/etc/host_identity.json`.
+#### Type
 
-When pam_authz is invoked, it queries OPA the endpoint at the specified url.
-The input document to this query contains the following fields: `user` and
-`host_identity`. The `user` field is a string, and `host_identity` is required
-to be json and is the contents of the `indentity_file_path` file described above.
-The OPA policy needs to use this data to make an authorization decision.
-Example policy documents are [included in this project](../docker/policy/ssh.rego).
+`auth` is the PAM type. Only `auth` and `account` types are implemented in this module,
+ and they perform exactly the same operations.
 
-The response from OPA is expected to include a field `errors`, which is an
-array of strings. If `errors` is empty, then the module returns success.
-Otherwise, the module returns deny.
+#### Control
+
+`required` is the PAM control level, indicating that a failure code from this PAM
+module should ultimately lead to a the application being sent a failure response.
+
+#### Module and arguments
+
+`lib/security/pam_authz.so` is the full path to the PAM module.
+The module accepts arguments of the format `<flag>=<value>`.
+
+###### Valid flags
+
+|Property           |Required   |Description|
+|-------------------|-----------|-----------|
+|`url`              |yes        |The URL of an OPA instance API.
+|`display_endpoint` |no         |The path of the package containing policy that describes what to display or prompt the user.
+|`pull_endpoint`    |no         |The path of the package containing policy that describes the JSON files and environment variables that should be collected from the system.
+|`authz_endpoint`   |yes        |The path of the package containing the policy that takes all collected data as input and makes the final decision.
+|`log_level`        |no         |The verbosity of logs that this PAM module generates.
+
+While not providing non-required endpoints will not break the PAM module, recommended practice is
+to have valid endpoints in all PAM configurations.
+
+This will ensure that configurations only need to be modified once, requiring minimal provisioning in the future.
+Policy can then control all authorization behavior. For example, to remove all user interaction
+from the process, simply have the *display* policy (described below) evaluate to an empty list.
+
+## Policies
+
+Requirements and examples of the OPA packages for each cycle are described below.
+Note that it is OK to do nothing in the *display* and *pull* cycles: the associated policies should then evaluate to empty lists.
+
+#### Display
+
+The only rule required for this cycle is `display_spec`, which must contain a list of objects.
+These objects each describe a message that should be displayed to the user, in order.
+Each object should contain:
+
+1. `message`: The message to display to the user.
+2. `key`: The key that the user's response should be associated with, where applicable.
+    The authorization policy will ultimately be invoked with an object containing this key.
+3.  `style`: One of the following PAM conversation styles:
+    - `prompt_echo_on` prompts the user for non-sensitive information.
+    - `prompt_echo_off` prompts the user for sensitive information.
+    - `info` displays an informational message to the user.
+    - `error` displays an error message to the user.
+
+    The actual conversation between the application and the user is implemented by the
+    application, and may vary in behavior. For example, OpenSSH will postpone displaying
+    all `info` messages, dumping them at the end after all prompts are completed.
+
+    Each application has a different maximum input length that the user can enter.
+    This value is, for example, 256 characters for common implementations of `sudo`, and
+    1024 characters for OpenSSH.
+    Input larger than this maximum will usually be truncated by the application.
+
+###### Example
+
+The following policy greets the user, and then prompts the user for their last name and secret.
+
+```
+# This package path should be passed with the display_endpoint flag
+# in the PAM configuration file.
+package common.display
+
+display_spec = [
+	{
+		"message": "Welcome to the OPA-PAM demonstration.",
+		"style": "info",
+	},
+	{
+		"message": "Please enter your last name: ",
+		"style": "prompt_echo_on",
+		"key": "last_name",
+	},
+	{
+		"message": "Please enter your secret: ",
+		"style": "prompt_echo_off",
+		"key": "secret",
+	},
+]
+```
 
 
-## Copyright
+#### Pull
 
-Portions of this module use code from the [pam-ussh project](https://github.com/uber/pam-ussh).
-Those portions are copyright Uber Technologies. See the [license](LICENSE)
-for more details.
+The following rules are required:
+
+1. `files` should be a list of strings, each being a path to a JSON file on the system
+   that the PAM module is running on. Only absolute paths are guaranteed to work.
+
+2. `env_vars` should be a list of strings, each being a name of an environment variable
+   whose value is needed for authorization. The environment variable should be readable
+   by the PAM module.
+
+###### Example
+
+The following policy requests for a JSON file's contents.
+
+```
+# This package path should be passed with the pull_endpoint flag
+# in the PAM configuration file.
+package common.pull
+
+# JSON files to pull.
+files = ["/etc/host_identity.json"]
+
+# env_vars to pull.
+env_vars = []
+```
+
+#### Authz
+
+The following rules are required:
+
+1. `allow` should evaluate to `true` if the authorization is successful.
+2. `errors` should be an array containing error messages that the PAM module will log.
+
+The authz package will receive an `input` object containing the data for making the decision:
+- `display_responses` is an object having keys as defined in the display policy, and
+  user responses to prompts as values.
+- `pull_responses` is an object containing the following:
+  - `files` is an object having file paths as keys and their contents as values.
+  - `env_vars` is an object containing environment variable names and values.
+- `sysinfo` is an object containing the following default system information, extracted
+  from the PAM session.
+  - `pam_username` is the username that the session will grant after authorization.
+  - `pam_service` is the name of the application which invoked the PAM session.
+  - `pam_req_user` is the username that made the authorization request.
+  - `pam_req_host` is the hostname that made the authorizatoin request.
+
+###### Example
+
+The following policy only grants access if:
+
+- The user enters `ramesh` and `suresh` when prompted.
+- The file `/etc/host_identity.json` has `"host_id": "frontend"`.
+- The username requesting authorization is `ops`.
+
+As you can see, the input below corresponds to the data requested by policy in the
+two previous cycles.
+
+```
+# This package path should be passed with the authz_endpoint flag
+# in the PAM configuration file.
+package common.authz
+
+import input.display_responses
+import input.pull_responses
+import input.sysinfo
+
+default allow = false
+
+allow {
+	# Verify user input.
+	display_responses.last_name = "ramesh"
+	display_responses.secret = "suresh"
+
+	# Only allow running on host_id "frontend"
+	pull_responses.files["/etc/host_identity.json"].host_id = "frontend"
+
+	# Only authorize user "ops"
+	sysinfo.pam_username = "ops"
+}
+
+errors["You cannot pass!"] {
+	not allow
+}
+```
+
+## Logging
+
+The PAM module logs using syslog to the `LOG_AUTH` facility. On Linux, the logs can
+usually be found at `/var/log/auth.log`.
+
+The following log levels are accepted with the `log_level` flag:
+
+- `none`: Don't log anything.
+- `error`: Log only error messages.
+- `info`: Log error and info messages.
+- `debug`: Log verbosely; additionally log to standard error.
+
+## Debugging
+
+Set up the `sudo` and `sshd` PAM configuration files to run with `log_level=debug`.
+It is recommended to use `sudo` for debugging first, instead of `sshd`.
+
+To debug a docker container running these PAM configurations, get into the container:
+
+```shell
+$ docker exec -it <container-id> bash
+```
+
+Then switch to the user you want to test with, in this case `ops`:
+
+```shell
+$ su - ops
+```
+
+Now run `sudo ls` and read the debug logs.
+
+If you want to additionally debug `sshd`, it is recommended to start your own
+instance of `sshd` in debug mode because the existing `sshd` daemon will not log to stderr.
+
+```shell
+$ $(which sshd) -d -p 2227
+```
+
+To SSH as user `ops` to your `sshd` service, run the SSH client with lenient
+host requirements and verbose logs:
+
+```bash
+ssh -p 2227 ops@<container-ip> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -vvv
+```
