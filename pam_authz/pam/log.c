@@ -12,7 +12,8 @@
 static const char SYSLOG_IDENTITY[] = "OPA-PAM";
 
 // Log levels.
-// These constants should be used inside the PAM module to specify logging behavior.
+// These constants should be used as an argument in the PAM configuration
+// to specify logging behavior.
 static const char LOG_LEVEL_NONE[]  = "none";  // Log nothing.
 static const char LOG_LEVEL_ERROR[] = "error"; // Log only errors.
 static const char LOG_LEVEL_INFO[]  = "info";  // Log general info.

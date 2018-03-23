@@ -27,7 +27,7 @@ To compile the authz PAM module, the following are needed:
 
 Preferably, all libraries should be installed under `/usr`, so that the `LD_LIBRARY_PATH` environment
 variable is not required at runtime. This can be done, for example, by running the autoconf
-configuration files with the `prefix` flag during installation:
+configuration files with the `prefix` flag during installation.
 
 ```shell
 $ ./configure --prefix=/usr
@@ -156,7 +156,14 @@ The following rules are required:
 
 ###### Example
 
-The following policy requests for a JSON file's contents.
+Let's assume that we have several running hosts each having a file `/etc/host_identity.json`
+which looks like this - 
+```
+{
+    "host_id": "<some host id>"
+}
+```
+The following policy requests for collection of the JSON file's contents.
 
 ```
 # This package path should be passed with the pull_endpoint flag
@@ -187,19 +194,44 @@ The authz package will receive an `input` object containing the data for making 
   from the PAM session.
   - `pam_username` is the username that the session will grant after authorization.
   - `pam_service` is the name of the application which invoked the PAM session.
-  - `pam_req_user` is the username that made the authorization request.
-  - `pam_req_host` is the hostname that made the authorizatoin request.
+  - `pam_req_username` is the username that made the authorization request.
+  - `pam_req_hostname` is the hostname that made the authorizatoin request.
 
 ###### Example
 
-The following policy only grants access if:
+The two previous cycles determine what the *authz* policy receives as context.
+Based on the *display* and *pull* examples above, the context should be:
+
+```
+{
+    "input": {
+        "display_responses": {
+            "last_name": "<user input>",
+            "secret":    "<user input>"
+        },
+        "pull_responses": {
+            "files": {
+                "/etc/host_identity.json": {
+                    "host_id": "<some host id>"
+                }
+            },
+            "env_vars": {}
+        },
+        "sysinfo": {
+            "pam_username":     "<PAM session value>",
+            "pam_service":      "<PAM session value>",
+            "pam_req_username": "<PAM session value>",
+            "pam_req_hostname": "<PAM session value>"
+        }
+    }
+}
+```
+
+The example policy below only grants access if
 
 - The user enters `ramesh` and `suresh` when prompted.
 - The file `/etc/host_identity.json` has `"host_id": "frontend"`.
 - The username requesting authorization is `ops`.
-
-As you can see, the input below corresponds to the data requested by policy in the
-two previous cycles.
 
 ```
 # This package path should be passed with the authz_endpoint flag
@@ -246,13 +278,16 @@ The following log levels are accepted with the `log_level` flag:
 Set up the `sudo` and `sshd` PAM configuration files to run with `log_level=debug`.
 It is recommended to use `sudo` for debugging first, instead of `sshd`.
 
-To debug a docker container running these PAM configurations, get into the container:
+*Note:* The [trial docker containers](https://github.com/yashtewari/contrib/blob/more-pam-docs/pam_authz/README.md#try-it),
+by default, run with settings suitable for debugging.
+
+To debug a docker container running these PAM configurations, get into the container,
 
 ```shell
 $ docker exec -it <container-id> bash
 ```
 
-Then switch to the user you want to test with, in this case `ops`:
+Then switch to the user you want to test with, for example `ops`.
 
 ```shell
 $ su - ops
@@ -268,7 +303,7 @@ $ $(which sshd) -d -p 2227
 ```
 
 To SSH as user `ops` to your `sshd` service, run the SSH client with lenient
-host requirements and verbose logs:
+host requirements and verbose logs.
 
 ```bash
 ssh -p 2227 ops@<container-ip> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -vvv
