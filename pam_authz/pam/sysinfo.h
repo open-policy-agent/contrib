@@ -3,7 +3,7 @@
 
 #include <security/pam_appl.h>
 
-// struct Sysinfo holds key-value system data.
+// struct SysinfoItem holds key-value system data.
 struct SysinfoItem {
 	char *id;
 	char *value;

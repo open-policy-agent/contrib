@@ -9,11 +9,14 @@
 #define MAX_SYSINFO_ID_LENGTH 256
 #define SYSINFO_COUNT 4
 
+// Sysinfo IDs are keys which system information values are stored against.
 static const char SYSINFO_ID_PAM_USER   [MAX_SYSINFO_ID_LENGTH] = "pam_username";
 static const char SYSINFO_ID_PAM_SERVICE[MAX_SYSINFO_ID_LENGTH] = "pam_service";
 static const char SYSINFO_ID_PAM_RUSER  [MAX_SYSINFO_ID_LENGTH] = "pam_req_username";
 static const char SYSINFO_ID_PAM_RHOST  [MAX_SYSINFO_ID_LENGTH] = "pam_req_hostname";
 
+// SysinfoIdToPamInto maps applicable Sysinfo IDs to corresponding
+// PAM library integer constants.
 static const struct SysinfoIdToPamInt {
 	const char *id;
 	int        pam_int;
