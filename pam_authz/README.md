@@ -39,7 +39,7 @@ $ ssh -p 2222 ops@localhost -o StrictHostKeyChecking=no -o UserKnownHostsFile=/d
 
 Enter `ramesh` and `suresh` in the prompts that follow to get access.
 
-This behavior can be modified by changing the policies in the directoy mentioned above.
+This behavior can be modified by changing the policies in the directory mentioned above.
 
 #### Modify OpenSSH
 

@@ -13,7 +13,7 @@
 
 static const int DISPLAY_STYLE_INVALID = -1;
 
-// Diplay style constants used in OPA.
+// Display style constants used in OPA.
 static const char DISPLAY_STYLE_PROMPT_ECHO_ON[]  = "prompt_echo_on";
 static const char DISPLAY_STYLE_PROMPT_ECHO_OFF[] = "prompt_echo_off";
 static const char DISPLAY_STYLE_TEXT_INFO[]       = "info";
