@@ -28,4 +28,4 @@ push: build
 
 .PHONY: up
 up:
-	docker-compose -f docker/docker-compose.yaml up
+	docker-compose -f docker/docker-compose.yaml up --force-recreate
