@@ -58,4 +58,4 @@ The SSH server will now require both [this key](./docker/keys/id_rsa) and PAM mo
 
 ### Details
 
-For a more details on how to install, run, debug the PAM module on your own machines, see [this README](./pam/README.md).
+For a more details on how to install, run and debug the PAM module on your own machines, see [this README](./pam/README.md).

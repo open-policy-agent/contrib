@@ -1,6 +1,6 @@
 # This package path should be passed with the authz_endpoint flag
-# in the PAM configuration file.
-package common.authz
+# in the sshd PAM configuration file.
+package sshd.authz
 
 import input.display_responses
 import input.pull_responses

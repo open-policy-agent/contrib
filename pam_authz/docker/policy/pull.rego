@@ -1,6 +1,6 @@
 # This package path should be passed with the pull_endpoint flag
 # in the PAM configuration file.
-package common.pull
+package pull
 
 # JSON files to pull.
 files = ["/etc/host_identity.json"]
