@@ -47,12 +47,12 @@ system.
    for example add the following to `/etc/pam.d/sudo`:
 
 ```
-auth required /lib/security/pam_authz.so url=http://opa:8181 authz_endpoint=/v1/data/common/authz display_endpoint=/v1/data/common/display pull_endpoint=/v1/data/common/pull log_level=debug
+auth required /lib/security/pam_authz.so url=http://opa:8181 authz_endpoint=/v1/data/sshd/authz display_endpoint=/v1/data/display pull_endpoint=/v1/data/pull log_level=debug
 ```
 
 ## Configuration
 
-This section breaks down the different pieces in the configuration example above.
+This section breaks down the different pieces in the PAM config `/etc/pam.d/sudo` example from above.
 
 #### Type
 
@@ -86,6 +86,9 @@ This will ensure that configurations only need to be modified once, requiring mi
 Policy can then control all authorization behavior. For example, to remove all user interaction
 from the process, simply have the *display* policy (described below) evaluate to an empty list.
 
+The same *display*, *pull* and *authz* packages have been used for both the *sudo* and *sshd* in this document.
+In production, it is more useful to use separate, fine-grained policy packages in each PAM configuration file.
+
 ## Policies
 
 Requirements and examples of the OPA packages for each cycle are described below.
@@ -107,8 +110,8 @@ Each object should contain:
     - `error` displays an error message to the user.
 
     The actual conversation between the application and the user is implemented by the
-    application, and may vary in behavior. For example, OpenSSH will postpone displaying
-    all `info` messages, dumping them at the end after all prompts are completed.
+    application, and may vary in behavior. For example, some versions of OpenSSH will postpone
+    displaying all `info` messages, dumping them at the end after all prompts are completed.
 
     Each application has a different maximum input length that the user can enter.
     This value is, for example, 256 characters for common implementations of `sudo`, and
@@ -122,7 +125,7 @@ The following policy greets the user, and then prompts the user for their last n
 ```
 # This package path should be passed with the display_endpoint flag
 # in the PAM configuration file.
-package common.display
+package display
 
 display_spec = [
 	{
@@ -168,7 +171,7 @@ The following policy requests for collection of the JSON file's contents.
 ```
 # This package path should be passed with the pull_endpoint flag
 # in the PAM configuration file.
-package common.pull
+package pull
 
 # JSON files to pull.
 files = ["/etc/host_identity.json"]
@@ -236,7 +239,7 @@ The example policy below only grants access if
 ```
 # This package path should be passed with the authz_endpoint flag
 # in the PAM configuration file.
-package common.authz
+package sshd.authz
 
 import input.display_responses
 import input.pull_responses
@@ -278,7 +281,8 @@ The following log levels are accepted with the `log_level` flag:
 Set up the `sudo` and `sshd` PAM configuration files to run with `log_level=debug`.
 It is recommended to use `sudo` for debugging first, instead of `sshd`.
 
-*Note:* The [trial docker containers](https://github.com/yashtewari/contrib/blob/more-pam-docs/pam_authz/README.md#try-it),
+*Note:* The
+[trial docker containers](../README.md#try-it),
 by default, run with settings suitable for debugging.
 
 To debug a docker container running these PAM configurations, get into the container,

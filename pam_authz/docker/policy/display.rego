@@ -1,6 +1,6 @@
 # The package path. This should be passed with the display_endpoint flag
 # in the PAM configuration file.
-package common.display
+package display
 
 display_spec = [
 	{
