@@ -4,6 +4,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 
 ## Examples and Integrations
 
+- [Kafka Authorization](./kafka_authorizer)
 - [HTTP API Authorization (Spring Security)](./spring_authz)
 - [HTTP API Authorization (Linkerd)](./linkerd_authz)
 - [HTTP API Authorization (Python)](./api_authz)

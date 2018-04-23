@@ -1,0 +1,22 @@
+{
+    "operation": {
+        "name": "Write",
+        "toJava": "WRITE"
+    },
+    "resource": {
+        "resourceType": {
+            "name": "Topic",
+            "error": "TOPIC_AUTHORIZATION_FAILED",
+            "toJava": "TOPIC"
+        },
+        "name": "click-stream"
+    },
+    "session": {
+        "principal": {
+            "principalType": "User",
+            "name": "CN=anon_producer.tutorial.openpolicyagent.org,OU=TUTORIAL,O=OPA,L=SF,ST=CA,C=US"
+        },
+        "clientAddress": "172.19.0.6",
+        "sanitizedUser": "CN%3Danon_producer.tutorial.openpolicyagent.org%2COU%3DTUTORIAL%2CO%3DOPA%2CL%3DSF%2CST%3DCA%2CC%3DUS"
+    }
+}
