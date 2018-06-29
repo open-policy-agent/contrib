@@ -1,0 +1,58 @@
+ {% extends "bootstrap/base.html" %} {% block title %}Initech - Messages{% endblock %} {% block styles %}
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css"> {% endblock %} {% block scripts %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+    $('#login-modal').on('shown.bs.modal', function () {
+        $('#username').focus();
+    });
+</script> {% endblock %}{% block content %}
+
+<nav class="navbar navbar-inverse navbar-static-top">
+    <div class="container">
+        <div class="navbar-header">
+        </div>
+        <p class="navbar-text navbar-right">
+            <i class="glyphicon glyphicon-user" aria-hidden="true"></i>
+            <span style="padding-left: 5px;">{{ username }} {% if user: %} - L{{user.clearance_level}} - {{ user.departments | join(", ")}} {% endif %} (
+                <a href="#login-modal" data-toggle="modal">Login</a> {% if username %} /
+                <a href="logout">Logout</a> {% endif %})
+            </span>
+        </p>
+    </div>
+</nav>
+
+<div id="login-modal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Please sign in</h4>
+            </div>
+            <div class="modal-body">
+                <form method="post" action='login' name="login_form">
+                    <p>
+                        <input type="text" class="form-control" name="username" id="username" placeholder="User Name">
+                    </p>
+                    <p>
+                        <input type="password" class="form-control" name="passwd" placeholder="Password">
+                    </p>
+                    <p>
+                        <button type="submit" class="btn btn-primary">Sign in</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </p>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<p align=center>
+    <img src="/static/logo.png" /> </p>
+<br/>{% if posts %}{% for post in posts %}
+<h3>{{ post.department }} (L{{ post.clearance_level }}): {{ post.name }} (posted by {{ post.author }})</h2>
+<p>{{ post.content }}</p>
+{% endfor %} {% else %}
+<p>No posts.</p> {% endif %} {% endblock %}
