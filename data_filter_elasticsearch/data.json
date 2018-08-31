@@ -1,0 +1,14 @@
+{
+	"policies": [
+		{
+		  "subjects": ["team:local:ops"],
+		  "resource": ["posts"],
+		  "action": "GET",
+		  "condition": {
+			  "field": "author",
+			  "value": "user",
+			  "operator": "equal"
+			}
+		}
+	]
+}
