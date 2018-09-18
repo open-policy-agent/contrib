@@ -5,7 +5,16 @@ allow {
     p.action = input.method
     p.resource = input.path
     r := data.elastic[p.resource[0]][_]
-    eval(r, p.condition.operator, p.condition.field, p.condition.value)
+    all_conditions_true(p, r)
+}
+
+all_conditions_true(p, r) {
+    not any_condition_false(p, r)
+}
+
+any_condition_false(p, r) {
+    c := p.condition[_]
+    not eval(r, c.operator, c.field, c.value)
 }
 
 # allow "admin" to see all posts
@@ -29,6 +38,10 @@ allow = true {
 # equality operator
 eval(r, "equal", r_field, i_field) {
     r[r_field] = input[i_field]
+}
+
+eval(r, "equal", r_field, i_field) {
+    r[r_field] = i_field
 }
 
 # return posts authored by input.user
