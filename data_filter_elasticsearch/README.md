@@ -84,7 +84,7 @@ For the OPA operators mentioned above, following are Elasticsearch queries gener
 
 - The server is loaded with an Elasticsearch `Index` template which defines the settings and the mapping for the `posts` index which is also created when the server starts.
 
-- The OPA policies should be written according to the fields in the Elasticsearch documents to get the desired results.
+- The OPA policies should be written according to the fields in the Elasticsearch documents to get the desired results. The manner in which Elasticsearch handles unmapped fields depends on the type of query. For example, a Term query returns no matches if the query refers to a `term` that doesn't point to an object field in the mapping. On the other hand, a Nested query will fail if the defined `path` doesn't point to an object field in the mapping. **To obtain uniform behaviour across queries such that an unmapped `path` in a Nested query does not throw an exception and instead not match any documents for this query, the server generates Nested queries that ignore an unmapped path.**
 
 - The server supports limited OPA operators and returns an error if the OPA policy contains an unsupported operator.
 
