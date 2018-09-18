@@ -4,11 +4,18 @@
 		  "subjects": ["team:local:ops"],
 		  "resource": ["posts"],
 		  "action": "GET",
-		  "condition": {
-			  "field": "author",
-			  "value": "user",
-			  "operator": "equal"
-			}
+		  "condition": [
+				{
+				  "field": "author",
+				  "value": "user",
+				  "operator": "equal"
+				},
+				{
+				  "field": "id",
+				  "value": "post1",
+				  "operator": "equal"
+				}
+		  ]
 		}
 	]
 }
