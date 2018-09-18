@@ -180,7 +180,7 @@ func GenerateTermQuery(fieldName string, fieldValue interface{}) *elastic.TermQu
 }
 
 func GenerateNestedQuery(path string, query elastic.Query) *elastic.NestedQuery {
-	return elastic.NewNestedQuery(path, query).QueryName("NestedQuery")
+	return elastic.NewNestedQuery(path, query).QueryName("NestedQuery").IgnoreUnmapped(true)
 
 }
 
