@@ -42,23 +42,17 @@ or
 [Go modules](https://github.com/golang/go/wiki/Modules)
 to manage dependencies. Make sure to use a version such as `^6.0.0`.
 
-To use Elastic with Go 1.10.2 or earlier, import:
+To use Elastic, import:
 
 ```go
 import "github.com/olivere/elastic"
-```
-
-If you're using Go 1.11 (or Go 1.10.3+) with modules support, import Elastic like this:
-
-```go
-import "github.com/olivere/elastic/v6"
 ```
 
 ### Elastic 6.0
 
 Elastic 6.0 targets Elasticsearch 6.x which was [released on 14th November 2017](https://www.elastic.co/blog/elasticsearch-6-0-0-released).
 
-Notice that there are will be a lot of [breaking changes in Elasticsearch 6.0](https://www.elastic.co/guide/en/elasticsearch/reference/6.2/breaking-changes-6.0.html)
+Notice that there are a lot of [breaking changes in Elasticsearch 6.0](https://www.elastic.co/guide/en/elasticsearch/reference/6.2/breaking-changes-6.0.html)
 and we used this as an opportunity to [clean up and refactor Elastic](https://github.com/olivere/elastic/blob/release-branch.v6/CHANGELOG-6.0.md)
 as we did in the transition from earlier versions of Elastic.
 
