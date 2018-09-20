@@ -2,19 +2,20 @@
 
 
 [[projects]]
-  digest = "1:b63a498fc2100264747713e78481daa16826ad733554df58d6cba5c7a4f80ad9"
+  digest = "1:2915e1464ca9a9480ed2fb94d6939cdf418525b03b24bfb256486990abd8155a"
   name = "github.com/dchest/siphash"
   packages = ["."]
   pruneopts = "UT"
-  revision = "4ebf1de738443ea7f45f02dc394c4df1942a126d"
-  version = "v1.1.0"
+  revision = "ca249f45189071f5d44dc6401334e3572037b9cb"
+  version = "v1.2.0"
 
 [[projects]]
-  digest = "1:c45cef8e0074ea2f8176a051df38553ba997a3616f1ec2d35222b1cf9864881e"
+  digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
   name = "github.com/ghodss/yaml"
   packages = ["."]
   pruneopts = "UT"
-  revision = "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
+  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
@@ -46,7 +47,7 @@
   revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
-  digest = "1:2c21822ae415766ec45d6194a40af2ad4640e7bdbfa338c48b215fab2cf704e2"
+  digest = "1:605ac81d35c5ce7c33b6937ca081cd5ebd6a3051867b32afa08883af5113ce69"
   name = "github.com/olivere/elastic"
   packages = [
     ".",
@@ -54,11 +55,11 @@
     "uritemplates",
   ]
   pruneopts = "UT"
-  revision = "66b430cdba34722e4a9656f651df616fe5f0503f"
-  version = "v6.2.2"
+  revision = "7c7a23ca147ace22f386500828b95e9cb226f87f"
+  version = "v6.2.6"
 
 [[projects]]
-  digest = "1:602d6d359a5be9d268b8070c5e9900148ec7e7403c2afd19570e573a216be2fe"
+  digest = "1:b9991633e12cc2f3d575f0514f84ce6d2aa3fd7f6142509df31d13502ef0ad36"
   name = "github.com/open-policy-agent/opa"
   packages = [
     "ast",
@@ -73,30 +74,31 @@
     "util",
   ]
   pruneopts = "UT"
-  revision = "d5ba22b70a13a5afce4d2ea7103f2ac2d300bc48"
-  version = "v0.9.1"
+  revision = "98ede92df8ef639af5ae304dea19146aefb5ba48"
 
 [[projects]]
-  digest = "1:87d657fe2a38c018c33f867e7d6e6208d4997279b2c9e25d31aed22e461ad010"
+  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
   name = "github.com/pkg/errors"
   packages = ["."]
   pruneopts = "UT"
-  revision = "30136e27e2ac8d167177e8a583aa4c3fea5be833"
-
-[[projects]]
-  digest = "1:565770be35414989a808a4c2fd74a9b0b1d48ca0b6c615f2f5908ab99bf77eee"
-  name = "github.com/rcrowley/go-metrics"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "8732c616f52954686704c8645fe1a9d59e9df7c1"
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:a674c72a29ec4fb2a638bcaba61c8eef5e1d2bb6364c2811c0a4cbf20fb889c4"
+  digest = "1:c4556a44e350b50a490544d9b06e9fba9c286c21d6c0e47f54f3a9214597298c"
+  name = "github.com/rcrowley/go-metrics"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
+
+[[projects]]
+  branch = "master"
+  digest = "1:bc2a31092538ed0bdfe9c5c784d6caca3ea5236b690371698826753d2ffa6beb"
   name = "github.com/yashtewari/glob-intersection"
   packages = ["."]
   pruneopts = "UT"
-  revision = "7af743e8ec8480fee1932a737a406f7ec817f910"
+  revision = "5c77d914dd0ba7bedca923f97232d37137e038f3"
 
 [[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
@@ -114,6 +116,8 @@
     "github.com/olivere/elastic",
     "github.com/open-policy-agent/opa/ast",
     "github.com/open-policy-agent/opa/rego",
+    "github.com/open-policy-agent/opa/storage/inmem",
+    "github.com/open-policy-agent/opa/util",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -35,7 +35,7 @@
 
 [[constraint]]
   name = "github.com/open-policy-agent/opa"
-  version = "0.9.1"
+  revision = "98ede92df8ef639af5ae304dea19146aefb5ba48"
 
 [prune]
   go-tests = true
