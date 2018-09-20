@@ -12,7 +12,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Puppet Authorization](./puppet_example)
 - [Container Image Policy (Kubernetes and CoreOS Clair)](./image_enforcer)
 - [Data Filtering (SQL)](./data_filter_example)
-- [Data Filtering (Elasticsearch)](./data_filter_example)
+- [Data Filtering (Elasticsearch)](./data_filter_elasticsearch)
 
 ## Contributing
 
