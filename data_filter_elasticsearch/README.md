@@ -21,9 +21,7 @@ Build the example by running `make build`
    ./opa-es-filtering
    ```
 
-   The server listens on `:8080` and loads sample data. The server exposes
-   two endpoints `/posts` and `/posts/{post_id}`.
-   OPA is loaded with an example policy which has rules related to both these
+   The server listens on `:8080` and exposes two endpoints `/posts` and `/posts/{post_id}`. OPA is loaded with an example policy from the file `example.rego` which has rules related to both these
    endpoints.
 
 3. Open a new window and make a request:
