@@ -138,7 +138,7 @@ func indexPost(ctx context.Context, client *elastic.Client, indexName string, po
 	_, err := client.Index().
 		Index(indexName).
 		Type("_doc").
-		Id(post.Id).
+		Id(post.ID).
 		BodyJson(post).
 		Do(ctx)
 	if err != nil {

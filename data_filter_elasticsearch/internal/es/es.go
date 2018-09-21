@@ -12,9 +12,9 @@ import (
 	"github.com/olivere/elastic"
 )
 
-// Posts is a structure used for serializing/deserializing data in Elasticsearch.
+// Post is a structure used for serializing/deserializing data in Elasticsearch.
 type Post struct {
-	Id         string              `json:"id"`
+	ID         string              `json:"id"`
 	Author     string              `json:"author"`
 	Message    string              `json:"message"`
 	Department string              `json:"department"`
@@ -28,23 +28,28 @@ type Post struct {
 	Stats      []Stat              `json:"stats"`
 }
 
+// People describes a person.
 type People struct {
 	Info Name `json:"info"`
 }
 
+// Name describes a person's first and last name.
 type Name struct {
 	First string `json:"first"`
 	Last  string `json:"last"`
 }
 
+// Stat decribes author's stats.
 type Stat struct {
 	AuthorStat AuthorStatData `json:"authorstat"`
 }
 
+// AuthorStatData decribes author's stat data.
 type AuthorStatData struct {
 	AuthorBio AuthorBioData `json:"authorbio"`
 }
 
+// AuthorBioData describes author's bio.
 type AuthorBioData struct {
 	Country string `json:"country"`
 	State   string `json:"state"`
@@ -146,9 +151,10 @@ const mapping = `
 	}
 }`
 
+// NewPost returns a post.
 func NewPost(id, author, message, department, email string, clearance int, action, resource string, conditions []map[string]string, likes []map[string]string, followers []People, stats []Stat) *Post {
 	post := &Post{}
-	post.Id = id
+	post.ID = id
 	post.Author = author
 	post.Message = message
 	post.Department = department
@@ -164,26 +170,31 @@ func NewPost(id, author, message, department, email string, clearance int, actio
 	return post
 }
 
+// NewESClient returns an Elasticsearch client.
 func NewESClient() (*elastic.Client, error) {
 	return elastic.NewClient()
 }
 
+// GetIndexMapping returns Elasticsearch mapping.
 func GetIndexMapping() string {
 	return mapping
 }
 
 // Elasticsearch queries
 
+// GenerateTermQuery returns an ES Term Query.
 func GenerateTermQuery(fieldName string, fieldValue interface{}) *elastic.TermQuery {
 	return elastic.NewTermQuery(fieldName, fieldValue).QueryName("TermQuery")
 
 }
 
+// GenerateNestedQuery returns an ES Nested Query.
 func GenerateNestedQuery(path string, query elastic.Query) *elastic.NestedQuery {
 	return elastic.NewNestedQuery(path, query).QueryName("NestedQuery").IgnoreUnmapped(true)
 
 }
 
+// GenerateBoolFilterQuery returns an ES Filter Bool Query.
 func GenerateBoolFilterQuery(filters []elastic.Query) *elastic.BoolQuery {
 	q := elastic.NewBoolQuery()
 	for _, filter := range filters {
@@ -194,6 +205,7 @@ func GenerateBoolFilterQuery(filters []elastic.Query) *elastic.BoolQuery {
 
 }
 
+// GenerateBoolShouldQuery returns an ES Should Bool Query.
 func GenerateBoolShouldQuery(queries []elastic.Query) *elastic.BoolQuery {
 	q := elastic.NewBoolQuery().QueryName("BoolShouldQuery")
 	for _, query := range queries {
@@ -202,20 +214,24 @@ func GenerateBoolShouldQuery(queries []elastic.Query) *elastic.BoolQuery {
 	return q
 }
 
+// GenerateBoolMustNotQuery returns an ES Must Not Bool Query.
 func GenerateBoolMustNotQuery(fieldName string, fieldValue interface{}) *elastic.BoolQuery {
 	q := elastic.NewBoolQuery().QueryName("BoolMustNotQuery")
 	q = q.MustNot(elastic.NewTermQuery(fieldName, fieldValue))
 	return q
 }
 
+// GenerateMatchAllQuery returns an ES MatchAll Query.
 func GenerateMatchAllQuery() *elastic.MatchAllQuery {
 	return elastic.NewMatchAllQuery().QueryName("MatchAllQuery")
 }
 
+// GenerateMatchQuery returns an ES Match Query.
 func GenerateMatchQuery(fieldName string, fieldValue interface{}) *elastic.MatchQuery {
 	return elastic.NewMatchQuery(fieldName, fieldValue).QueryName("MatchQuery")
 }
 
+// GenerateQueryStringQuery returns an ES Query String Query.
 func GenerateQueryStringQuery(fieldName string, fieldValue interface{}) *elastic.QueryStringQuery {
 	queryString := fmt.Sprintf("*%s*", fieldValue)
 	q := elastic.NewQueryStringQuery(queryString).QueryName("QueryStringQuery")
@@ -223,26 +239,32 @@ func GenerateQueryStringQuery(fieldName string, fieldValue interface{}) *elastic
 	return q
 }
 
+// GenerateRegexpQuery returns an ES Regexp Query.
 func GenerateRegexpQuery(fieldName string, fieldValue interface{}) *elastic.RegexpQuery {
 	return elastic.NewRegexpQuery(fieldName, fieldValue.(string))
 }
 
+// GenerateRangeQueryLt returns an ES Less Than Range Query.
 func GenerateRangeQueryLt(fieldName string, val interface{}) *elastic.RangeQuery {
 	return elastic.NewRangeQuery(fieldName).Lt(val)
 }
 
+// GenerateRangeQueryLte returns an ES Less Than or Equal Range Query.
 func GenerateRangeQueryLte(fieldName string, val interface{}) *elastic.RangeQuery {
 	return elastic.NewRangeQuery(fieldName).Lte(val)
 }
 
+// GenerateRangeQueryGt returns an ES Greater Than Range Query.
 func GenerateRangeQueryGt(fieldName string, val interface{}) *elastic.RangeQuery {
 	return elastic.NewRangeQuery(fieldName).Gt(val)
 }
 
+// GenerateRangeQueryGte returns an ES Greater Than or Equal Range Query.
 func GenerateRangeQueryGte(fieldName string, val interface{}) *elastic.RangeQuery {
 	return elastic.NewRangeQuery(fieldName).Gte(val)
 }
 
+// ExecuteEsSearch executes ES query.
 func ExecuteEsSearch(ctx context.Context, client *elastic.Client, indexName string, query elastic.Query) (*elastic.SearchResult, error) {
 	searchResult, err := client.Search().
 		Index(indexName).
@@ -255,7 +277,7 @@ func ExecuteEsSearch(ctx context.Context, client *elastic.Client, indexName stri
 	return searchResult, nil
 }
 
-func AnalyzeSearchResult(searchResult *elastic.SearchResult) {
+func analyzeSearchResult(searchResult *elastic.SearchResult) {
 
 	if searchResult.Hits.TotalHits > 0 {
 		fmt.Printf("Found a total of %d posts\n", searchResult.Hits.TotalHits)
@@ -270,7 +292,7 @@ func AnalyzeSearchResult(searchResult *elastic.SearchResult) {
 			}
 
 			// Print with post
-			fmt.Printf("\nPost ID: %s\nAuthor: %s\nMessage: %s\nDepartment: %s\nClearance: %d\n", t.Id, t.Author, t.Message, t.Department, t.Clearance)
+			fmt.Printf("\nPost ID: %s\nAuthor: %s\nMessage: %s\nDepartment: %s\nClearance: %d\n", t.ID, t.Author, t.Message, t.Department, t.Clearance)
 		}
 	} else {
 		// No hits
@@ -278,7 +300,8 @@ func AnalyzeSearchResult(searchResult *elastic.SearchResult) {
 	}
 }
 
-func GetPrettyResult(searchResult *elastic.SearchResult) []Post {
+// GetPrettyESResult returns formatted ES results.
+func GetPrettyESResult(searchResult *elastic.SearchResult) []Post {
 
 	result := []Post{}
 	if searchResult.Hits.TotalHits > 0 {

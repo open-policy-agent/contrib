@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -35,15 +36,17 @@ type apiWrapper struct {
 	Result interface{} `json:"result"`
 }
 
-type Api struct {
+// ServerAPI is the Server's API.
+type ServerAPI struct {
 	router *mux.Router
 	es     *elastic.Client
 	index  string
 }
 
-func New(esClient *elastic.Client, index string) *Api {
+// New return the server's API.
+func New(esClient *elastic.Client, index string) *ServerAPI {
 
-	api := &Api{es: esClient, index: index}
+	api := &ServerAPI{es: esClient, index: index}
 	api.router = mux.NewRouter()
 
 	api.router.HandleFunc("/posts", api.handlGetPosts).Methods(http.MethodGet)
@@ -52,12 +55,13 @@ func New(esClient *elastic.Client, index string) *Api {
 	return api
 }
 
-func (api *Api) Run(ctx context.Context) error {
+// Run the server.
+func (api *ServerAPI) Run(ctx context.Context) error {
 	fmt.Println("Starting server 8080....")
 	return http.ListenAndServe(":8080", api.router)
 }
 
-func (api *Api) handlGetPosts(w http.ResponseWriter, r *http.Request) {
+func (api *ServerAPI) handlGetPosts(w http.ResponseWriter, r *http.Request) {
 	result, err := queryOPA(w, r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, apiCodeInternalError, err)
@@ -74,7 +78,7 @@ func (api *Api) handlGetPosts(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (api *Api) handleGetPost(w http.ResponseWriter, r *http.Request) {
+func (api *ServerAPI) handleGetPost(w http.ResponseWriter, r *http.Request) {
 	result, err := queryOPA(w, r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, apiCodeInternalError, err)
@@ -102,7 +106,13 @@ func queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
 		"user":   user,
 	}
 
-	return opa.Compile(r.Context(), input)
+	// load policy
+	module, err := ioutil.ReadFile(opa.PolicyFileName)
+	if err != nil {
+		return opa.Result{}, fmt.Errorf("failed to read policy: %v", err)
+	}
+
+	return opa.Compile(r.Context(), input, module)
 }
 
 func combineQuery(queryFromHandler elastic.Query, queryFromOpa elastic.Query) elastic.Query {
@@ -122,7 +132,7 @@ func queryEs(ctx context.Context, client *elastic.Client, index string, query el
 	}
 
 	writeJSON(w, http.StatusOK, apiWrapper{
-		Result: es.GetPrettyResult(searchResult),
+		Result: es.GetPrettyESResult(searchResult),
 	})
 	return
 }

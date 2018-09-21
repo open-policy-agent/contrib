@@ -8,26 +8,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"strings"
 
 	"github.com/olivere/elastic"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/open-policy-agent/opa/storage/inmem"
-	"github.com/open-policy-agent/opa/util"
 )
 
-const policyFileName = "example.rego"
-const dataFileName = "data.json"
+// PolicyFileName is the name of the file where the policy is defined.
+const PolicyFileName = "example.rego"
 
+const defaultQuery = "data.example.allow == true"
+
+// Result contains ES queries after partially evaluating OPA queries.
 type Result struct {
 	Defined bool
 	Query   elastic.Query
 }
 
-func Compile(ctx context.Context, input map[string]interface{}) (Result, error) {
+// Compile compiles OPA query and partially evaluates it.
+func Compile(ctx context.Context, input map[string]interface{}, policy []byte) (Result, error) {
 
 	unknowns := []string{"data.elastic"}
 
@@ -41,30 +42,11 @@ func Compile(ctx context.Context, input map[string]interface{}) (Result, error) 
 		return Result{}, err
 	}
 
-	// load policy
-	module, err := ioutil.ReadFile(policyFileName)
-	if err != nil {
-		return Result{}, fmt.Errorf("failed to read policy: %v", err)
-	}
-
-	// load data
-	data, err := ioutil.ReadFile(dataFileName)
-	if err != nil {
-		return Result{}, fmt.Errorf("failed to read policy: %v", err)
-	}
-	var dataInput map[string]interface{}
-	err = util.UnmarshalJSON(data, &dataInput)
-	if err != nil {
-		return Result{}, err
-	}
-	store := inmem.NewFromObject(dataInput)
-
 	r := rego.New(
-		rego.Query("data.example.allow == true"),
-		rego.Module(policyFileName, string(module)),
+		rego.Query(defaultQuery),
+		rego.Module(PolicyFileName, string(policy)),
 		rego.ParsedInput(inputTerm.Value),
 		rego.Unknowns(unknowns),
-		rego.Store(store),
 	)
 
 	pq, err := r.Partial(ctx)
@@ -75,12 +57,12 @@ func Compile(ctx context.Context, input map[string]interface{}) (Result, error) 
 	if len(pq.Queries) == 0 {
 		// always deny
 		return Result{Defined: false}, nil
-	} else {
-		for _, query := range pq.Queries {
-			if len(query) == 0 {
-				// always allow
-				return Result{Defined: true}, nil
-			}
+	}
+
+	for _, query := range pq.Queries {
+		if len(query) == 0 {
+			// always allow
+			return Result{Defined: true}, nil
 		}
 	}
 
