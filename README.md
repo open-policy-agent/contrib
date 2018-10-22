@@ -14,6 +14,11 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Data Filtering (SQL)](./data_filter_example)
 - [Data Filtering (Elasticsearch)](./data_filter_elasticsearch)
 
+This a list of integrations that are not currently part of the contrib repository:
+
+- [HTTP API Authorization with Kong (built by @maxTN)](https://github.com/TravelNest/kong-authorization-opa)
+- [Helm policies (built by @eicnix)](https://github.com/eicnix/helm-opa)
+
 ## Contributing
 
 If you have built an integration, example, or proof-of-concept on top of OPA that you would like to release to the community, feel free to submit a Pull Request against this repository. Please create a new top-level directory containing:
