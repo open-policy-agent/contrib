@@ -19,6 +19,7 @@ This a list of integrations that are not currently part of the contrib repositor
 - [HTTP API Authorization with Kong (built by @maxTN)](https://github.com/TravelNest/kong-authorization-opa)
 - [Helm policies (built by @eicnix)](https://github.com/eicnix/helm-opa)
 - [Install and load OPA with Habitat (built by @srenatus)](https://github.com/habitat-sh/core-plans/tree/master/opa)
+- [Python/Flask extension for HTTP API Authorization and Policy Enforcement Points (built by @EliuX)](https://github.com/EliuX/flask-opa)
 
 ## Contributing
 
