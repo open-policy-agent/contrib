@@ -15,10 +15,10 @@ Create an OPA configuration file:
 
 ```yaml
 decision_logs:
-	plugin: println_decision_logger
+  plugin: println_decision_logger
 plugins:
-	println_decision_logger:
-		stderr: false
+  println_decision_logger:
+    stderr: false
 ```
 
 Run OPA:
