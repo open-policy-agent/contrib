@@ -20,6 +20,7 @@ This a list of integrations that are not currently part of the contrib repositor
 - [Helm policies (built by @eicnix)](https://github.com/eicnix/helm-opa)
 - [Install and load OPA with Habitat (built by @srenatus)](https://github.com/habitat-sh/core-plans/tree/master/opa)
 - [Python/Flask extension for HTTP API Authorization and Policy Enforcement Points (built by @EliuX)](https://github.com/EliuX/flask-opa)
+- [ANTLR v4 Rego Grammar (built by @anadon)](https://github.com/antlr/grammars-v4/tree/master/rego)
 
 ## Contributing
 
