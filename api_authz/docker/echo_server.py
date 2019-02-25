@@ -31,13 +31,13 @@ def check_auth(url, user, method, url_as_array, token):
     except Exception as err:
         logging.info(err)
         return {}
+    j = rsp.json()
     if rsp.status_code >= 300:
         logging.info(
             "Error checking auth, got status %s and message: %s"
             % (j.status_code, j.text)
         )
         return {}
-    j = rsp.json()
     logging.info("Auth response:")
     logging.info(json.dumps(j, indent=2))
     return j
@@ -52,7 +52,10 @@ def root(path):
     user, _ = base64.b64decode(user_encoded).decode("utf-8").split(":")
     url = opa_url + policy_path
     path_as_array = path.split("/")
-    token = request.args["token"] if "token" in request.args else None
+    token = None
+    if "token" in request.args:
+        token = request.args["token"]
+
     j = check_auth(url, user, request.method, path_as_array, token).get("result", {})
     if j.get("allow", False) == True:
         return "Success: user %s is authorized \n" % user
