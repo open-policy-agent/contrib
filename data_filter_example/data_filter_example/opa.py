@@ -121,7 +121,7 @@ def compile(q, input, unknowns, from_table=None):
     # Compile query set into SQL clauses.
     query_set = ast.QuerySet.from_data(queries)
     queryPreprocessor().process(query_set)
-    clauses = queryTranslator(from_table).translate(query_set)
+    clauses = queryTranslator(from_table, TranslationSettings(quoteType="'")).translate(query_set)
 
     return Result(True, clauses)
 
@@ -159,18 +159,19 @@ class queryTranslator(object):
         'abs': 'abs',
     }
 
-    def __init__(self, from_table):
+    def __init__(self, from_table, transSet: TranslationSettings):
         self._from_table = from_table
         self._joins = []
         self._conjunctions = []
         self._tables = set([])
         self._relations = []
         self._operands = []
+        self.transSet = transSet
 
     def translate(self, query_set):
         """Returns a :class:`sql.Union` containing :class:`sql.Where` and
         :class:`sql.InnerJoin` clauses to be applied to the query."""
-        walk.walk(query_set, self)
+        walk.walk(query_set, self, self.transSet)
         clauses = []
         if len(self._conjunctions) > 0:
             clauses = [sql.Where(sql.Disjunction([conj for conj in self._conjunctions]))]
@@ -193,7 +194,7 @@ class queryTranslator(object):
         """Pushes an expression onto the conjunction or join stack if multiple
         tables are referred to."""
         for expr in node.exprs:
-            walk.walk(expr, self)
+            walk.walk(expr, self, self.transSet)
         conj = sql.Conjunction(self._relations)
         if len(self._tables) > 1:
             self._tables.remove(self._from_table)
@@ -216,7 +217,7 @@ class queryTranslator(object):
             raise TranslationError('invalid expression: operator not supported: %s' % op)
         self._operands.append([])
         for term in node.operands:
-            walk.walk(term, self)
+            walk.walk(term, self, self.transSet)
         sql_operands = self._operands.pop()
         self._relations.append(sql.Relation(sql_op, *sql_operands))
 
@@ -238,7 +239,7 @@ class queryTranslator(object):
                 raise TranslationError('invalid call: operator not supported: %s' % op)
             self._operands.append([])
             for term in v.operands:
-                walk.walk(term, self)
+                walk.walk(term, self, self.transSet)
             sql_operands = self._operands.pop()
             self._operands[-1].append(sql.Call(sql_op, sql_operands))
         else:
@@ -254,12 +255,13 @@ class queryPreprocessor(object):
     data.foo.bar. Similarly, if var is dereferenced later in the query, e.g.,
     var.baz, that will be rewritten as data.foo.baz."""
 
-    def __init__(self):
+    def __init__(self, transSet: TranslationSettings):
         self._table_names = []
         self._table_vars = {}
+        self.transSet = transSet
 
     def process(self, query_set):
-        walk.walk(query_set, self)
+        walk.walk(query_set, self, transSet)
 
     def __call__(self, node):
         if isinstance(node, ast.Query):
@@ -269,12 +271,12 @@ class queryPreprocessor(object):
             if node.is_call():
                 # Skip the built-in call operator.
                 for o in node.operands:
-                    walk.walk(o, self)
+                    walk.walk(o, self, transSet)
                 return
         elif isinstance(node, ast.Call):
             # Skip the call operator.
             for o in node.operands:
-                walk.walk(o, self)
+                walk.walk(o, self, transSet)
             return
         elif isinstance(node, ast.Ref):
             head = node.terms[0].value.value
