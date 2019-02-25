@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+"""@todo."""
+
 
 import sqlite3
 import base64
@@ -9,11 +11,16 @@ from flask_bootstrap import Bootstrap
 
 from data_filter_example import opa
 
+"""
+Basic server interface for python.  Abstracts the REST API.
+"""
+
 app = flask.Flask(__name__, static_url_path="/static")
 Bootstrap(app)
 
 
 def get_post(post_id):
+    """See the REST API documentation for more."""
     decision = query_opa("GET", ["posts", post_id])
     if not decision.defined:
         raise flask.abort(403)
@@ -30,6 +37,7 @@ def get_post(post_id):
 
 
 def list_posts():
+    """See the REST API documentation for more."""
     decision = query_opa("GET", ["posts"])
     if not decision.defined:
         raise flask.abort(403)
@@ -40,6 +48,7 @@ def list_posts():
 
 
 def create_post(post):
+    """See the REST API documentation for more."""
     decision = query_opa("POST", ["posts"], post=post)
     if not decision.defined:
         raise flask.abort(403)
@@ -55,30 +64,36 @@ def create_post(post):
 
 
 def query_opa(method, path, **kwargs):
+    """See the REST API documentation for more."""
     input = {"method": method, "path": path, "subject": make_subject()}
     for key in kwargs:
         input[key] = kwargs[key]
-    return opa.compile(q="data.example.allow==true", input=input, unknowns=["posts"])
+    tr = opa.compile(q="data.example.allow==true", input=input, unknowns=["posts"])
+    return tr
 
 
 @app.route("/api/posts/<post_id>", methods=["GET"])
 def api_get_post(post_id):
+    """@todo."""
     return flask.jsonify(get_post(post_id))
 
 
 @app.route("/api/posts", methods=["GET"])
 def api_list_posts():
+    """@todo."""
     return flask.jsonify(list_posts())
 
 
 @app.route("/api/posts", methods=["POST"])
 def api_create_post():
+    """@todo."""
     post = flask.request.get_json(force=True)
     return flask.jsonify(create_post(post))
 
 
 @app.route("/")
 def index():
+    """@todo."""
     kwargs = {"username": flask.request.cookies.get("user", ""), "posts": list_posts()}
     if kwargs["username"] in USERS:
         kwargs["user"] = USERS[kwargs["username"]]
@@ -87,6 +102,7 @@ def index():
 
 @app.route("/login", methods=["POST"])
 def login():
+    """@todo."""
     user = flask.request.values.get("username")
     response = app.make_response(flask.redirect(flask.request.referrer))
     response.set_cookie("user", user)
@@ -99,6 +115,7 @@ def login():
 
 @app.route("/logout", methods=["GET"])
 def logout():
+    """@todo."""
     response = app.make_response(flask.redirect(flask.request.referrer))
     response.set_cookie("user", "", expires=0)
     for c in COOKIES:
@@ -107,6 +124,7 @@ def logout():
 
 
 def make_subject():
+    """Trivial helper function."""
     subject = {}
     user = flask.request.cookies.get("user", "")
     if user:
@@ -119,6 +137,7 @@ def make_subject():
 
 
 def get_db():
+    """See the REST API documentation for more."""
     db = getattr(flask.g, "_database", None)
     if db is None:
         db = flask.g._database = sqlite3.connect("posts.db")
@@ -128,12 +147,14 @@ def get_db():
 
 @app.teardown_appcontext
 def close_connection(e):
+    """@todo."""
     db = getattr(flask.g, "_database", None)
     if db is not None:
         db.close()
 
 
 def init_schema():
+    """@todo."""
     db = get_db()
     c = db.cursor()
     for table in TABLES:
@@ -143,6 +164,7 @@ def init_schema():
 
 
 def pump_db():
+    """@todo."""
     db = get_db()
     c = db.cursor()
     for table in TABLES:
@@ -152,12 +174,14 @@ def pump_db():
 
 
 def init_db():
+    """@todo."""
     with app.app_context():
         init_schema()
         pump_db()
 
 
 def query_db(query, args=(), one=False):
+    """@todo."""
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
     cur.close()
@@ -165,10 +189,12 @@ def query_db(query, args=(), one=False):
 
 
 def insert_post(cursor, post):
+    """@todo."""
     insert_object("posts", cursor, post)
 
 
 def insert_object(table, cursor, obj):
+    """@todo."""
     row_keys = sorted(obj.keys())
     keys = "(" + ",".join(row_keys) + ")"
     values = "(" + ",".join(["?"] * len(row_keys)) + ")"
@@ -179,6 +205,7 @@ def insert_object(table, cursor, obj):
 
 
 def make_dicts(cursor, row):
+    """@todo."""
     return dict((cursor.description[idx][0], value) for idx, value in enumerate(row))
 
 
@@ -189,7 +216,11 @@ POSTS = [
         "author": "bob",
         "department": "dev",
         "clearance_level": 3,
-        "content": "Leverage agile frameworks to provide a robust synopsis for high level overviews. Iterative approaches to corporate strategy foster collaborative thinking to further the overall value proposition. Organically grow the holistic world view of disruptive innovation via workplace diversity and empowerment.",
+        "content": "Leverage agile frameworks to provide a robust synopsis for "
+        "high level overviews. Iterative approaches to corporate strategy foster "
+        "collaborative thinking to further the overall value proposition. "
+        "Organically grow the holistic world view of disruptive innovation via "
+        "workplace diversity and empowerment.",
     },
     {
         "id": "post2",
@@ -197,7 +228,11 @@ POSTS = [
         "author": "bob",
         "department": "sec",
         "clearance_level": 2,
-        "content": "Bring to the table win-win survival strategies to ensure proactive domination. At the end of the day, going forward, a new normal that has evolved from generation X is on the runway heading towards a streamlined cloud solution. User generated content in real-time will have multiple touchpoints for offshoring.",
+        "content": "Bring to the table win-win survival strategies to ensure "
+        "proactive domination. At the end of the day, going forward, a new normal "
+        "that has evolved from generation X is on the runway heading towards a "
+        "streamlined cloud solution. User generated content in real-time will have "
+        "multiple touchpoints for offshoring.",
     },
     {
         "id": "post3",
@@ -205,7 +240,10 @@ POSTS = [
         "author": "alice",
         "department": "sec",
         "clearance_level": 5,
-        "content": "Capitalize on low hanging fruit to identify a ballpark value added activity to beta test. Override the digital divide with additional clickthroughs from DevOps. Nanotechnology immersion along the information highway will close the loop on focusing solely on the bottom line.",
+        "content": "Capitalize on low hanging fruit to identify a ballpark value "
+        "added activity to beta test. Override the digital divide with additional "
+        "clickthroughs from DevOps. Nanotechnology immersion along the information "
+        "highway will close the loop on focusing solely on the bottom line.",
     },
     {
         "id": "post4",
@@ -213,7 +251,11 @@ POSTS = [
         "author": "alice",
         "department": "sec",
         "clearance_level": 10,
-        "content": 'Collaboratively administrate turnkey channels whereas virtual e-tailers. Objectively seize scalable metrics whereas proactive e-services. Seamlessly empower fully researched growth strategies and interoperable internal or "organic" sources.',
+        "content": "Collaboratively administrate turnkey channels whereas virtual "
+        "e-tailers. Objectively seize scalable metrics whereas proactive "
+        "e-services. Seamlessly empower fully researched growth strategies and "
+        "interoperable "
+        'internal or "organic" sources.',
     },
     {
         "id": "post5",
@@ -221,7 +263,10 @@ POSTS = [
         "author": "charlie",
         "department": "company",
         "clearance_level": 1,
-        "content": "Objectively innovate empowered manufactured products whereas parallel platforms. Holisticly predominate extensible testing procedures for reliable supply chains. Dramatically engage top-line web services vis-a-vis cutting-edge deliverables.",
+        "content": "Objectively innovate empowered manufactured products whereas "
+        "parallel platforms. Holisticly predominate extensible testing procedures "
+        "for reliable supply chains. Dramatically engage top-line web services "
+        "vis-a-vis cutting-edge deliverables.",
     },
     {
         "id": "post6",
@@ -229,7 +274,11 @@ POSTS = [
         "author": "charlie",
         "department": "hr",
         "clearance_level": 10,
-        "content": "Podcasting operational change management inside of workflows to establish a framework. Taking seamless key performance indicators offline to maximise the long tail. Keeping your eye on the ball while performing a deep dive on the start-up mentality to derive convergence on cross-platform integration.",
+        "content": "Podcasting operational change management inside of workflows "
+        "to establish a framework. Taking seamless key performance indicators "
+        "offline to maximise the long tail. Keeping your eye on the ball while "
+        "performing a deep dive on the start-up mentality to derive convergence on "
+        "cross-platform integration.",
     },
 ]
 

@@ -9,7 +9,8 @@ The example below codifes the following policy (in English):
     * Users can read their own posts
     * Super users can do anything
 
-Posts can be listed (e.g., GET /posts) or read individually (e.g., GET /posts/1234).
+Posts can be listed (e.g., GET /posts) or read individually
+(e.g., GET /posts/1234).
 
     package example
 
@@ -65,7 +66,6 @@ None
 
 import requests
 import json
-from collections import namedtuple
 from rego import ast, walk
 from data_filter_example import sql
 
@@ -77,7 +77,8 @@ class TranslationError(Exception):
 
 
 class Result(object):
-    """Represents the result of a compile call.
+    """
+    Represents the result of a compile call.
 
     Attributes:
 
@@ -91,14 +92,16 @@ class Result(object):
     """
 
     def __init__(self, defined, sql):
+        """@todo."""
         self.defined = defined
         self.sql = sql
 
 
 def compile(q, input, unknowns, from_table=None):
-    """Returns a :class:`Result` that can be interpreted by the app to enforce
-    the policy."""
-
+    """
+    Returns a :class:`Result` that can be interpreted by the app to enforce
+    the policy.
+    """
     # Invoke OPA's Compile API and process response.
     response = requests.post(
         "http://localhost:8181/v1/compile",
@@ -122,16 +125,18 @@ def compile(q, input, unknowns, from_table=None):
     # Compile query set into SQL clauses.
     query_set = ast.QuerySet.from_data(queries)
     queryPreprocessor().process(query_set)
-    clauses = queryTranslator(from_table, TranslationSettings(quoteType="'")).translate(
-        query_set
-    )
+    clauses = queryTranslator(
+        from_table, sql.TranslationSettings(quoteType="'")
+    ).translate(query_set)
 
     return Result(True, clauses)
 
 
 def splice(SELECT, FROM, WHERE="", decision=None):
-    """Returns a SQL query as a string constructed from the caller's provided
-    values and the decision returned by compile."""
+    """
+    Returns a SQL query as a string constructed from the caller's provided
+    values and the decision returned by compile.
+    """
     sql = "SELECT " + SELECT + " FROM " + FROM
     if decision is not None and decision.sql is not None:
         queries = [sql] * len(decision.sql.clauses)
@@ -143,8 +148,10 @@ def splice(SELECT, FROM, WHERE="", decision=None):
 
 
 class queryTranslator(object):
-    """Implements the vistor pattern to translate Rego queries into equivalent
-    SQL clauses."""
+    """
+    Implements the vistor pattern to translate Rego queries into equivalent
+    SQL clauses.
+    """
 
     # Maps supported Rego relational operators to SQL relational operators.
     _sql_relation_operators = {
@@ -160,7 +167,8 @@ class queryTranslator(object):
     # Maps supported Rego call operators to SQL call operators.
     _sql_call_operators = {"abs": "abs"}
 
-    def __init__(self, from_table, transSet: TranslationSettings):
+    def __init__(self, from_table, transSet: sql.TranslationSettings):
+        """@todo."""
         self._from_table = from_table
         self._joins = []
         self._conjunctions = []
@@ -170,8 +178,10 @@ class queryTranslator(object):
         self.transSet = transSet
 
     def translate(self, query_set):
-        """Returns a :class:`sql.Union` containing :class:`sql.Where` and
-        :class:`sql.InnerJoin` clauses to be applied to the query."""
+        """
+        Returns a :class:`sql.Union` containing :class:`sql.Where` and
+        :class:`sql.InnerJoin` clauses to be applied to the query.
+        """
         walk.walk(query_set, self, self.transSet)
         clauses = []
         if len(self._conjunctions) > 0:
@@ -184,6 +194,7 @@ class queryTranslator(object):
         return sql.Union(clauses)
 
     def __call__(self, node):
+        """@todo."""
         if isinstance(node, ast.Query):
             self._translate_query(node)
         elif isinstance(node, ast.Expr):
@@ -194,8 +205,10 @@ class queryTranslator(object):
             return self
 
     def _translate_query(self, node):
-        """Pushes an expression onto the conjunction or join stack if multiple
-        tables are referred to."""
+        """
+        Pushes an expression onto the conjunction or join stack if multiple
+        tables are referred to.
+        """
         for expr in node.exprs:
             walk.walk(expr, self, self.transSet)
         conj = sql.Conjunction(self._relations)
@@ -254,23 +267,28 @@ class queryTranslator(object):
 
 
 class queryPreprocessor(object):
-    """Implements the visitor pattern to preprocess refs in the Rego query set.
+    """
+    Implements the visitor pattern to preprocess refs in the Rego query set.
     Preprocessing the Rego query set simplifies the translation process.
 
     Refs are rewritten to correspond directly to SQL tables aand columns.
     Specifically, refs of the form data.foo[var].bar are rewritten as
     data.foo.bar. Similarly, if var is dereferenced later in the query, e.g.,
-    var.baz, that will be rewritten as data.foo.baz."""
+    var.baz, that will be rewritten as data.foo.baz.
+    """
 
-    def __init__(self, transSet: TranslationSettings):
+    def __init__(self, transSet: sql.TranslationSettings):
+        """@todo."""
         self._table_names = []
         self._table_vars = {}
         self.transSet = transSet
 
     def process(self, query_set):
-        walk.walk(query_set, self, transSet)
+        """@todo."""
+        walk.walk(query_set, self, self.transSet)
 
     def __call__(self, node):
+        """@todo."""
         if isinstance(node, ast.Query):
             self._table_names.append({})
             self._table_vars = {}
@@ -278,12 +296,12 @@ class queryPreprocessor(object):
             if node.is_call():
                 # Skip the built-in call operator.
                 for o in node.operands:
-                    walk.walk(o, self, transSet)
+                    walk.walk(o, self, self.transSet)
                 return
         elif isinstance(node, ast.Call):
             # Skip the call operator.
             for o in node.operands:
-                walk.walk(o, self, transSet)
+                walk.walk(o, self, self.transSet)
             return
         elif isinstance(node, ast.Ref):
             head = node.terms[0].value.value

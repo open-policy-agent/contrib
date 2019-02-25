@@ -1,127 +1,164 @@
+"""@todo."""
+
 import json
 
 
 class TranslateSettings:
+    """@todo."""
+
     def __init__(self, quoteType='"'):
+        """@todo."""
         self.quoteType = quoteType
 
     def __call__(self, quoteType='"'):
+        """@todo."""
         self.quoteType = quoteType
 
 
 class Union(object):
+    """@todo."""
+
     def __init__(self, clauses, transSet: TranslateSettings):
+        """@todo."""
         self.clauses = clauses
 
 
 class InnerJoin(object):
+    """@todo."""
+
     def __init__(self, tables, expr, transSet: TranslateSettings):
+        """@todo."""
         self.tables = tables
         self.expr = expr
         self.settings = transSet
 
     def sql(self):
+        """@todo."""
         return (
             " ".join(["INNER JOIN " + t for t in self.tables])
             + " ON "
-            + self.expr.sql(transSet)
+            + self.expr.sql()
         )
 
 
 class Where(object):
+    """@todo."""
+
     def __init__(self, expr, transSet: TranslateSettings):
+        """@todo."""
         self.expr = expr
         self.settings = transSet
 
     def sql(self):
-        return "WHERE " + self.expr.sql(transSet)
+        """@todo."""
+        return "WHERE " + self.expr.sql()
 
 
 class Disjunction(object):
+    """@todo."""
+
     def __init__(self, conjunction, transSet: TranslateSettings):
+        """@todo."""
         self.conjunction = conjunction
         self.settings = transSet
 
     def sql(self):
-        return "(" + " OR ".join([c.sql(transSet) for c in self.conjunction]) + ")"
+        """@todo."""
+        return "(" + " OR ".join([c.sql() for c in self.conjunction]) + ")"
 
 
 class Conjunction(object):
+    """@todo."""
+
     def __init__(self, relation, transSet: TranslateSettings):
+        """@todo."""
         self.relation = relation
         self.settings = transSet
 
     def sql(self):
+        """@todo."""
         if len(self.relation) == 0:
             return "1"
-        return "(" + " AND ".join([r.sql(transSet) for r in self.relation]) + ")"
+        return "(" + " AND ".join([r.sql() for r in self.relation]) + ")"
 
 
 class Relation(object):
+    """@todo."""
+
     def __init__(self, operator, lhs, rhs, transSet: TranslateSettings):
+        """@todo."""
         self.operator = operator
         self.lhs = lhs
         self.rhs = rhs
         self.settings = transSet
 
     def sql(self):
-        return "%s %s %s" % (
-            self.lhs.sql(transSet),
-            self.operator.sql(transSet),
-            self.rhs.sql(transSet),
-        )
+        """@todo."""
+        return "%s %s %s" % (self.lhs.sql(), self.operator.sql(), self.rhs.sql())
 
 
 class Column(object):
+    """@todo."""
+
     def __init__(self, name, transSet: TranslateSettings, table=""):
+        """@todo."""
         self.table = table
         self.name = name
         self.settings = transSet
 
     def sql(self):
+        """@todo."""
         if self.table:
             return "%s.%s" % (self.table, self.name)
         return str(self.name)
 
 
 class Call(object):
+    """@todo."""
+
     def __init__(self, operator, operands, transSet: TranslateSettings):
+        """@todo."""
         self.operator = operator
         self.operands = operands
         self.settings = transSet
 
     def sql(self):
-        return (
-            self.operator
-            + "("
-            + ", ".join(o.sql(transSet) for o in self.operands)
-            + ")"
-        )
+        """@todo."""
+        return self.operator + "(" + ", ".join(o.sql() for o in self.operands) + ")"
 
 
 class Constant(object):
+    """@todo."""
+
     def __init__(self, value, transSet: TranslateSettings):
+        """@todo."""
         self.value = value
         self.settings = transSet
 
     def sql(self):
+        """@todo."""
         tr = json.dumps(self.value)
         if tr[0] == '"' and tr[-1] == '"':
-            tr[0] = transSet.quoteType
-            tr[-1] = transSet.quoteType
+            tr[0] = self.transSet.quoteType
+            tr[-1] = self.transSet.quoteType
         return tr
 
 
 class RelationOp(object):
+    """@todo."""
+
     def __init__(self, value, transSet: TranslateSettings):
+        """@todo."""
         self.value = value
         self.settings = transSet
 
     def sql(self):
+        """@todo."""
         return self.value
 
 
 def walk(node, vis, transSet: TranslateSettings):
+    """@todo."""
     next = vis(node)
     if next is None:
         return
@@ -149,11 +186,17 @@ def walk(node, vis, transSet: TranslateSettings):
 
 
 def pretty_print(node, transSet: TranslateSettings):
+    """@todo."""
+
     class printer(object):
+        """@todo."""
+
         def __init__(self, indent):
+            """@todo."""
             self.indent = indent
 
         def __call__(self, node):
+            """@todo."""
             print(" " * self.indent, node.__class__.__name__)
             return printer(self.indent + 2)
 
