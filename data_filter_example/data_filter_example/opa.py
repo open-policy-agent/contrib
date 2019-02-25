@@ -72,6 +72,7 @@ from data_filter_example import sql
 
 class TranslationError(Exception):
     """Raised if an error occurs during the Rego to SQL translation."""
+
     pass
 
 
@@ -88,6 +89,7 @@ class Result(object):
         unconditionally. If sql is not None, the app should apply the SQL
         clauses to the query it is about to run.
     """
+
     def __init__(self, defined, sql):
         self.defined = defined
         self.sql = sql
@@ -99,18 +101,17 @@ def compile(q, input, unknowns, from_table=None):
 
     # Invoke OPA's Compile API and process response.
     response = requests.post(
-        'http://localhost:8181/v1/compile',
-        data=json.dumps({
-            'query': q,
-            'input': input,
-            'unknowns': ['data.' + u for u in unknowns],
-        }))
+        "http://localhost:8181/v1/compile",
+        data=json.dumps(
+            {"query": q, "input": input, "unknowns": ["data." + u for u in unknowns]}
+        ),
+    )
 
     body = response.json()
     if response.status_code != 200:
-        raise Exception('%s: %s' % (body.code, body.message))
+        raise Exception("%s: %s" % (body.code, body.message))
 
-    queries = body.get('result', {}).get('queries', [])
+    queries = body.get("result", {}).get("queries", [])
 
     # Check if query is never or always defined.
     if len(queries) == 0:
@@ -121,22 +122,24 @@ def compile(q, input, unknowns, from_table=None):
     # Compile query set into SQL clauses.
     query_set = ast.QuerySet.from_data(queries)
     queryPreprocessor().process(query_set)
-    clauses = queryTranslator(from_table, TranslationSettings(quoteType="'")).translate(query_set)
+    clauses = queryTranslator(from_table, TranslationSettings(quoteType="'")).translate(
+        query_set
+    )
 
     return Result(True, clauses)
 
 
-def splice(SELECT, FROM, WHERE='', decision=None):
+def splice(SELECT, FROM, WHERE="", decision=None):
     """Returns a SQL query as a string constructed from the caller's provided
     values and the decision returned by compile."""
-    sql = 'SELECT ' + SELECT + ' FROM ' + FROM
+    sql = "SELECT " + SELECT + " FROM " + FROM
     if decision is not None and decision.sql is not None:
         queries = [sql] * len(decision.sql.clauses)
         for i, clause in enumerate(decision.sql.clauses):
-            queries[i] = queries[i] + ' ' + clause.sql()
+            queries[i] = queries[i] + " " + clause.sql()
             if WHERE:
-                queries[i] = queries[i] + ' AND (' + WHERE + ')'
-    return ' UNION '.join(queries)
+                queries[i] = queries[i] + " AND (" + WHERE + ")"
+    return " UNION ".join(queries)
 
 
 class queryTranslator(object):
@@ -145,19 +148,17 @@ class queryTranslator(object):
 
     # Maps supported Rego relational operators to SQL relational operators.
     _sql_relation_operators = {
-        'eq': '=',
-        'equal': '=',
-        'neq': '!=',
-        'lt': '<',
-        'gt': '>',
-        'lte': '<=',
-        'gte': '>=',
+        "eq": "=",
+        "equal": "=",
+        "neq": "!=",
+        "lt": "<",
+        "gt": ">",
+        "lte": "<=",
+        "gte": ">=",
     }
 
     # Maps supported Rego call operators to SQL call operators.
-    _sql_call_operators = {
-        'abs': 'abs',
-    }
+    _sql_call_operators = {"abs": "abs"}
 
     def __init__(self, from_table, transSet: TranslationSettings):
         self._from_table = from_table
@@ -174,7 +175,9 @@ class queryTranslator(object):
         walk.walk(query_set, self, self.transSet)
         clauses = []
         if len(self._conjunctions) > 0:
-            clauses = [sql.Where(sql.Disjunction([conj for conj in self._conjunctions]))]
+            clauses = [
+                sql.Where(sql.Disjunction([conj for conj in self._conjunctions]))
+            ]
         for (tables, conj) in self._joins:
             pred = sql.InnerJoin(tables, conj)
             clauses.append(pred)
@@ -209,12 +212,14 @@ class queryTranslator(object):
         if not node.is_call():
             return
         if len(node.operands) != 2:
-            raise TranslationError('invalid expression: too many arguments')
+            raise TranslationError("invalid expression: too many arguments")
         try:
             op = node.op()
             sql_op = sql.RelationOp(self._sql_relation_operators[op])
         except KeyError:
-            raise TranslationError('invalid expression: operator not supported: %s' % op)
+            raise TranslationError(
+                "invalid expression: operator not supported: %s" % op
+            )
         self._operands.append([])
         for term in node.operands:
             walk.walk(term, self, self.transSet)
@@ -236,14 +241,16 @@ class queryTranslator(object):
                 op = v.op()
                 sql_op = self._sql_call_operators[op]
             except KeyError:
-                raise TranslationError('invalid call: operator not supported: %s' % op)
+                raise TranslationError("invalid call: operator not supported: %s" % op)
             self._operands.append([])
             for term in v.operands:
                 walk.walk(term, self, self.transSet)
             sql_operands = self._operands.pop()
             self._operands[-1].append(sql.Call(sql_op, sql_operands))
         else:
-            raise TranslationError('invalid term: type not supported: %s' % v.__class__.__name__)
+            raise TranslationError(
+                "invalid term: type not supported: %s" % v.__class__.__name__
+            )
 
 
 class queryPreprocessor(object):
@@ -292,7 +299,9 @@ class queryPreprocessor(object):
             # Refs must be of the form data.<table>[<iterator>].<column>.
             if not isinstance(row_id, ast.Var):
                 raise TranslationError(
-                    'invalid reference: row identifier type not supported: %s' % row_id.__class__.__name__)
+                    "invalid reference: row identifier type not supported: %s"
+                    % row_id.__class__.__name__
+                )
 
             prefix = node.terms[:2]
 
@@ -305,7 +314,7 @@ class queryPreprocessor(object):
             # query.
             exist = self._table_names[-1].get(table_name, row_id.value)
             if exist != row_id.value:
-                raise TranslationError('invalid reference: self-joins not supported')
+                raise TranslationError("invalid reference: self-joins not supported")
             else:
                 self._table_names[-1][table_name] = row_id.value
 

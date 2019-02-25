@@ -1,5 +1,6 @@
 import json
 
+
 class TranslateSettings:
     def __init__(self, quoteType='"'):
         self.quoteType = quoteType
@@ -20,7 +21,11 @@ class InnerJoin(object):
         self.settings = transSet
 
     def sql(self):
-        return ' '.join(['INNER JOIN ' + t for t in self.tables]) + ' ON ' + self.expr.sql(transSet)
+        return (
+            " ".join(["INNER JOIN " + t for t in self.tables])
+            + " ON "
+            + self.expr.sql(transSet)
+        )
 
 
 class Where(object):
@@ -29,7 +34,7 @@ class Where(object):
         self.settings = transSet
 
     def sql(self):
-        return 'WHERE ' + self.expr.sql(transSet)
+        return "WHERE " + self.expr.sql(transSet)
 
 
 class Disjunction(object):
@@ -38,7 +43,7 @@ class Disjunction(object):
         self.settings = transSet
 
     def sql(self):
-        return '(' + " OR ".join([c.sql(transSet) for c in self.conjunction]) + ')'
+        return "(" + " OR ".join([c.sql(transSet) for c in self.conjunction]) + ")"
 
 
 class Conjunction(object):
@@ -48,8 +53,8 @@ class Conjunction(object):
 
     def sql(self):
         if len(self.relation) == 0:
-            return '1'
-        return '(' + " AND ".join([r.sql(transSet) for r in self.relation]) + ')'
+            return "1"
+        return "(" + " AND ".join([r.sql(transSet) for r in self.relation]) + ")"
 
 
 class Relation(object):
@@ -60,11 +65,15 @@ class Relation(object):
         self.settings = transSet
 
     def sql(self):
-        return "%s %s %s" % (self.lhs.sql(transSet), self.operator.sql(transSet), self.rhs.sql(transSet))
+        return "%s %s %s" % (
+            self.lhs.sql(transSet),
+            self.operator.sql(transSet),
+            self.rhs.sql(transSet),
+        )
 
 
 class Column(object):
-    def __init__(self, name, table='', transSet: TranslateSettings):
+    def __init__(self, name, transSet: TranslateSettings, table=""):
         self.table = table
         self.name = name
         self.settings = transSet
@@ -82,7 +91,12 @@ class Call(object):
         self.settings = transSet
 
     def sql(self):
-        return self.operator + '(' + ', '.join(o.sql(transSet) for o in self.operands) + ')'
+        return (
+            self.operator
+            + "("
+            + ", ".join(o.sql(transSet) for o in self.operands)
+            + ")"
+        )
 
 
 class Constant(object):
@@ -140,7 +154,7 @@ def pretty_print(node, transSet: TranslateSettings):
             self.indent = indent
 
         def __call__(self, node):
-            print ' ' * self.indent, node.__class__.__name__
+            print(" " * self.indent, node.__class__.__name__)
             return printer(self.indent + 2)
 
     vis = printer(0)
