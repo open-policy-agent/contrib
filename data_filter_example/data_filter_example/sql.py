@@ -3,7 +3,7 @@
 import json
 
 
-class TranslateSettings:
+class TranslationSettings(object):
     """@todo."""
 
     def __init__(self, quoteType='"'):
@@ -18,7 +18,7 @@ class TranslateSettings:
 class Union(object):
     """@todo."""
 
-    def __init__(self, clauses, transSet: TranslateSettings):
+    def __init__(self, clauses, transSet: TranslationSettings):
         """@todo."""
         self.clauses = clauses
 
@@ -26,7 +26,7 @@ class Union(object):
 class InnerJoin(object):
     """@todo."""
 
-    def __init__(self, tables, expr, transSet: TranslateSettings):
+    def __init__(self, tables, expr, transSet: TranslationSettings):
         """@todo."""
         self.tables = tables
         self.expr = expr
@@ -44,7 +44,7 @@ class InnerJoin(object):
 class Where(object):
     """@todo."""
 
-    def __init__(self, expr, transSet: TranslateSettings):
+    def __init__(self, expr, transSet: TranslationSettings):
         """@todo."""
         self.expr = expr
         self.settings = transSet
@@ -57,7 +57,7 @@ class Where(object):
 class Disjunction(object):
     """@todo."""
 
-    def __init__(self, conjunction, transSet: TranslateSettings):
+    def __init__(self, conjunction, transSet: TranslationSettings):
         """@todo."""
         self.conjunction = conjunction
         self.settings = transSet
@@ -70,7 +70,7 @@ class Disjunction(object):
 class Conjunction(object):
     """@todo."""
 
-    def __init__(self, relation, transSet: TranslateSettings):
+    def __init__(self, relation, transSet: TranslationSettings):
         """@todo."""
         self.relation = relation
         self.settings = transSet
@@ -85,7 +85,7 @@ class Conjunction(object):
 class Relation(object):
     """@todo."""
 
-    def __init__(self, operator, lhs, rhs, transSet: TranslateSettings):
+    def __init__(self, operator, lhs, rhs, transSet: TranslationSettings):
         """@todo."""
         self.operator = operator
         self.lhs = lhs
@@ -100,7 +100,7 @@ class Relation(object):
 class Column(object):
     """@todo."""
 
-    def __init__(self, name, transSet: TranslateSettings, table=""):
+    def __init__(self, name, transSet: TranslationSettings, table=""):
         """@todo."""
         self.table = table
         self.name = name
@@ -116,7 +116,7 @@ class Column(object):
 class Call(object):
     """@todo."""
 
-    def __init__(self, operator, operands, transSet: TranslateSettings):
+    def __init__(self, operator, operands, transSet: TranslationSettings):
         """@todo."""
         self.operator = operator
         self.operands = operands
@@ -130,24 +130,25 @@ class Call(object):
 class Constant(object):
     """@todo."""
 
-    def __init__(self, value, transSet: TranslateSettings):
+    def __init__(self, value, transSet: TranslationSettings):
         """@todo."""
         self.value = value
         self.settings = transSet
 
     def sql(self):
         """@todo."""
-        tr = json.dumps(self.value)
+        tr = list(json.dumps(self.value))
+
         if tr[0] == '"' and tr[-1] == '"':
-            tr[0] = self.transSet.quoteType
-            tr[-1] = self.transSet.quoteType
-        return tr
+            tr[0] = self.settings.quoteType
+            tr[-1] = self.settings.quoteType
+        return str(tr)
 
 
 class RelationOp(object):
     """@todo."""
 
-    def __init__(self, value, transSet: TranslateSettings):
+    def __init__(self, value, transSet: TranslationSettings):
         """@todo."""
         self.value = value
         self.settings = transSet
@@ -157,7 +158,7 @@ class RelationOp(object):
         return self.value
 
 
-def walk(node, vis, transSet: TranslateSettings):
+def walk(node, vis, transSet: TranslationSettings):
     """@todo."""
     next = vis(node)
     if next is None:
@@ -185,7 +186,7 @@ def walk(node, vis, transSet: TranslateSettings):
             walk(o, next, transSet)
 
 
-def pretty_print(node, transSet: TranslateSettings):
+def pretty_print(node, transSet: TranslationSettings):
     """@todo."""
 
     class printer(object):

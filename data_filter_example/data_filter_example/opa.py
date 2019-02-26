@@ -9,8 +9,7 @@ The example below codifes the following policy (in English):
     * Users can read their own posts
     * Super users can do anything
 
-Posts can be listed (e.g., GET /posts) or read individually
-(e.g., GET /posts/1234).
+Posts can be listed (e.g., GET /posts) or read individually (e.g., GET /posts/1234).
 
     package example
 
@@ -167,7 +166,7 @@ class queryTranslator(object):
     # Maps supported Rego call operators to SQL call operators.
     _sql_call_operators = {"abs": "abs"}
 
-    def __init__(self, from_table, transSet: sql.TranslationSettings):
+    def __init__(self, from_table, transSet):
         """@todo."""
         self._from_table = from_table
         self._joins = []
@@ -182,16 +181,16 @@ class queryTranslator(object):
         Returns a :class:`sql.Union` containing :class:`sql.Where` and
         :class:`sql.InnerJoin` clauses to be applied to the query.
         """
-        walk.walk(query_set, self, self.transSet)
+        walk.walk(query_set, self)
         clauses = []
         if len(self._conjunctions) > 0:
             clauses = [
-                sql.Where(sql.Disjunction([conj for conj in self._conjunctions]))
+                sql.Where(sql.Disjunction([conj for conj in self._conjunctions], transSet=self.transSet), transSet=self.transSet)
             ]
         for (tables, conj) in self._joins:
-            pred = sql.InnerJoin(tables, conj)
+            pred = sql.InnerJoin(tables, conj, transSet=self.transSet)
             clauses.append(pred)
-        return sql.Union(clauses)
+        return sql.Union(clauses, transSet=self.transSet)
 
     def __call__(self, node):
         """@todo."""
@@ -210,8 +209,8 @@ class queryTranslator(object):
         tables are referred to.
         """
         for expr in node.exprs:
-            walk.walk(expr, self, self.transSet)
-        conj = sql.Conjunction(self._relations)
+            walk.walk(expr, self)
+        conj = sql.Conjunction(self._relations, transSet=self.transSet)
         if len(self._tables) > 1:
             self._tables.remove(self._from_table)
             self._joins.append((self._tables, conj))
@@ -228,22 +227,22 @@ class queryTranslator(object):
             raise TranslationError("invalid expression: too many arguments")
         try:
             op = node.op()
-            sql_op = sql.RelationOp(self._sql_relation_operators[op])
+            sql_op = sql.RelationOp(self._sql_relation_operators[op], transSet=self.transSet)
         except KeyError:
             raise TranslationError(
                 "invalid expression: operator not supported: %s" % op
             )
         self._operands.append([])
         for term in node.operands:
-            walk.walk(term, self, self.transSet)
+            walk.walk(term, self)
         sql_operands = self._operands.pop()
-        self._relations.append(sql.Relation(sql_op, *sql_operands))
+        self._relations.append(sql.Relation(sql_op, *sql_operands, transSet=self.transSet))
 
     def _translate_term(self, node):
         """Pushes an element onto the operand stack."""
         v = node.value
         if isinstance(v, ast.Scalar):
-            self._operands[-1].append(sql.Constant(v.value))
+            self._operands[-1].append(sql.Constant(v.value, transSet=self.transSet))
         elif isinstance(v, ast.Ref) and len(v.terms) == 3:
             table = v.terms[1].value.value
             self._tables.add(table)
@@ -257,9 +256,9 @@ class queryTranslator(object):
                 raise TranslationError("invalid call: operator not supported: %s" % op)
             self._operands.append([])
             for term in v.operands:
-                walk.walk(term, self, self.transSet)
+                walk.walk(term, self)
             sql_operands = self._operands.pop()
-            self._operands[-1].append(sql.Call(sql_op, sql_operands))
+            self._operands[-1].append(sql.Call(sql_op, sql_operands, transSet=self.transSet))
         else:
             raise TranslationError(
                 "invalid term: type not supported: %s" % v.__class__.__name__
@@ -277,15 +276,14 @@ class queryPreprocessor(object):
     var.baz, that will be rewritten as data.foo.baz.
     """
 
-    def __init__(self, transSet: sql.TranslationSettings):
+    def __init__(self):
         """@todo."""
         self._table_names = []
         self._table_vars = {}
-        self.transSet = transSet
 
     def process(self, query_set):
         """@todo."""
-        walk.walk(query_set, self, self.transSet)
+        walk.walk(query_set, self)
 
     def __call__(self, node):
         """@todo."""
@@ -296,12 +294,12 @@ class queryPreprocessor(object):
             if node.is_call():
                 # Skip the built-in call operator.
                 for o in node.operands:
-                    walk.walk(o, self, self.transSet)
+                    walk.walk(o, self)
                 return
         elif isinstance(node, ast.Call):
             # Skip the call operator.
             for o in node.operands:
-                walk.walk(o, self, self.transSet)
+                walk.walk(o, self)
             return
         elif isinstance(node, ast.Ref):
             head = node.terms[0].value.value

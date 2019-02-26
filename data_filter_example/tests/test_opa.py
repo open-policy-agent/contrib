@@ -359,6 +359,10 @@ multi_table_assert_cases = [
 )
 def test_compile_one_table(note, input, policy, exp_defined, exp_sql):
     """@todo."""
+    exp_sql_str = None
+    if exp_sql:
+        exp_sql_str = ["WHERE " + exp_sql]
+
     crunch(
         "data.test.p = true",
         input,
@@ -366,7 +370,7 @@ def test_compile_one_table(note, input, policy, exp_defined, exp_sql):
         "q",
         policy,
         exp_defined,
-        ["WHERE " + exp_sql] if exp_sql is not None else None,
+        exp_sql_str,
     )
 
 
@@ -375,6 +379,10 @@ def test_compile_one_table(note, input, policy, exp_defined, exp_sql):
 )
 def test_compile_one_table_double_eq(note, input, policy, exp_defined, exp_sql):
     """@todo."""
+    exp_sql_str = None
+    if exp_sql:
+        exp_sql_str = ["WHERE " + exp_sql]
+
     crunch(
         "data.test.p == true",
         input,
@@ -382,7 +390,7 @@ def test_compile_one_table_double_eq(note, input, policy, exp_defined, exp_sql):
         "q",
         policy,
         exp_defined,
-        ["WHERE " + exp_sql] if exp_sql is not None else None,
+        exp_sql_str,
     )
 
 
