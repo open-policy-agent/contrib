@@ -363,15 +363,7 @@ def test_compile_one_table(note, input, policy, exp_defined, exp_sql):
     if exp_sql:
         exp_sql_str = ["WHERE " + exp_sql]
 
-    crunch(
-        "data.test.p = true",
-        input,
-        ["q"],
-        "q",
-        policy,
-        exp_defined,
-        exp_sql_str,
-    )
+    crunch("data.test.p = true", input, ["q"], "q", policy, exp_defined, exp_sql_str)
 
 
 @pytest.mark.parametrize(
@@ -383,15 +375,7 @@ def test_compile_one_table_double_eq(note, input, policy, exp_defined, exp_sql):
     if exp_sql:
         exp_sql_str = ["WHERE " + exp_sql]
 
-    crunch(
-        "data.test.p == true",
-        input,
-        ["q"],
-        "q",
-        policy,
-        exp_defined,
-        exp_sql_str,
-    )
+    crunch("data.test.p == true", input, ["q"], "q", policy, exp_defined, exp_sql_str)
 
 
 @pytest.mark.parametrize(

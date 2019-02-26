@@ -185,7 +185,12 @@ class queryTranslator(object):
         clauses = []
         if len(self._conjunctions) > 0:
             clauses = [
-                sql.Where(sql.Disjunction([conj for conj in self._conjunctions], transSet=self.transSet), transSet=self.transSet)
+                sql.Where(
+                    sql.Disjunction(
+                        [conj for conj in self._conjunctions], transSet=self.transSet
+                    ),
+                    transSet=self.transSet,
+                )
             ]
         for (tables, conj) in self._joins:
             pred = sql.InnerJoin(tables, conj, transSet=self.transSet)
@@ -227,7 +232,9 @@ class queryTranslator(object):
             raise TranslationError("invalid expression: too many arguments")
         try:
             op = node.op()
-            sql_op = sql.RelationOp(self._sql_relation_operators[op], transSet=self.transSet)
+            sql_op = sql.RelationOp(
+                self._sql_relation_operators[op], transSet=self.transSet
+            )
         except KeyError:
             raise TranslationError(
                 "invalid expression: operator not supported: %s" % op
@@ -236,7 +243,9 @@ class queryTranslator(object):
         for term in node.operands:
             walk.walk(term, self)
         sql_operands = self._operands.pop()
-        self._relations.append(sql.Relation(sql_op, *sql_operands, transSet=self.transSet))
+        self._relations.append(
+            sql.Relation(sql_op, *sql_operands, transSet=self.transSet)
+        )
 
     def _translate_term(self, node):
         """Pushes an element onto the operand stack."""
@@ -258,7 +267,9 @@ class queryTranslator(object):
             for term in v.operands:
                 walk.walk(term, self)
             sql_operands = self._operands.pop()
-            self._operands[-1].append(sql.Call(sql_op, sql_operands, transSet=self.transSet))
+            self._operands[-1].append(
+                sql.Call(sql_op, sql_operands, transSet=self.transSet)
+            )
         else:
             raise TranslationError(
                 "invalid term: type not supported: %s" % v.__class__.__name__
