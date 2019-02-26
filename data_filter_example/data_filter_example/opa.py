@@ -125,7 +125,7 @@ def compile(q, input, unknowns, from_table=None):
     query_set = ast.QuerySet.from_data(queries)
     queryPreprocessor().process(query_set)
     clauses = queryTranslator(
-        from_table, sql.TranslationSettings(quoteType="'") # 
+        from_table, sql.TranslationSettings(quoteType="'")  #
     ).translate(query_set)
 
     return Result(True, clauses)
@@ -187,8 +187,8 @@ class queryTranslator(object):
             clauses = [
                 sql.Where(
                     expr=sql.Disjunction(
-                        conjunction=[conj for conj in self._conjunctions], 
-                        transSet=self.transSet
+                        conjunction=[conj for conj in self._conjunctions],
+                        transSet=self.transSet,
                     ),
                     transSet=self.transSet,
                 )
@@ -245,18 +245,27 @@ class queryTranslator(object):
             walk.walk(term, self)
         sql_operands = self._operands.pop()
         self._relations.append(
-            sql.Relation(operator=sql_op, lhs=sql_operands[0], rhs=sql_operands[1], transSet=self.transSet)
+            sql.Relation(
+                operator=sql_op,
+                lhs=sql_operands[0],
+                rhs=sql_operands[1],
+                transSet=self.transSet,
+            )
         )
 
     def _translate_term(self, node):
         """Pushes an element onto the operand stack."""
         v = node.value
         if isinstance(v, ast.Scalar):
-            self._operands[-1].append(sql.Constant(value=v.value, transSet=self.transSet))
+            self._operands[-1].append(
+                sql.Constant(value=v.value, transSet=self.transSet)
+            )
         elif isinstance(v, ast.Ref) and len(v.terms) == 3:
             table = v.terms[1].value.value
             self._tables.add(table)
-            col = sql.Column(name=v.terms[2].value.value, transSet=self.transSet, table=table)
+            col = sql.Column(
+                name=v.terms[2].value.value, transSet=self.transSet, table=table
+            )
             self._operands[-1].append(col)
         elif isinstance(v, ast.Call):
             try:

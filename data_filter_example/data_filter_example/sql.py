@@ -137,7 +137,7 @@ class Constant(object):
 
     def sql(self):
         """@todo."""
-        if(type(self.value) == str):
+        if type(self.value) == str:
             tr = list(json.dumps(self.value))
             tr[0] = self.settings.quoteType
             tr[-1] = self.settings.quoteType
