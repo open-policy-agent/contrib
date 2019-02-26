@@ -3,6 +3,7 @@
 from data_filter_example import opa
 import pytest
 import requests
+import sqlparse
 
 
 def put_policy(str):
@@ -411,6 +412,9 @@ def crunch(query, input, unknowns, from_table, policy, exp_defined, exp_sql):
             if exp_sql is None:
                 assert result.sql is None
             else:
-                assert [c.sql() for c in result.sql.clauses] == exp_sql
+                actual_sql = [c.sql().replace("'", '"') for c in result.sql.clauses]
+                exp_sql = [s.replace("'", '"') for s in exp_sql]
+
+                assert actual_sql == exp_sql
         else:
             assert result.sql is None

@@ -18,7 +18,7 @@ class TranslationSettings(object):
 class Union(object):
     """@todo."""
 
-    def __init__(self, clauses, transSet: TranslationSettings):
+    def __init__(self, *, clauses, transSet: TranslationSettings):
         """@todo."""
         self.clauses = clauses
 
@@ -26,7 +26,7 @@ class Union(object):
 class InnerJoin(object):
     """@todo."""
 
-    def __init__(self, tables, expr, transSet: TranslationSettings):
+    def __init__(self, *, tables, expr, transSet: TranslationSettings):
         """@todo."""
         self.tables = tables
         self.expr = expr
@@ -44,7 +44,7 @@ class InnerJoin(object):
 class Where(object):
     """@todo."""
 
-    def __init__(self, expr, transSet: TranslationSettings):
+    def __init__(self, *, expr, transSet: TranslationSettings):
         """@todo."""
         self.expr = expr
         self.settings = transSet
@@ -57,7 +57,7 @@ class Where(object):
 class Disjunction(object):
     """@todo."""
 
-    def __init__(self, conjunction, transSet: TranslationSettings):
+    def __init__(self, *, conjunction, transSet: TranslationSettings):
         """@todo."""
         self.conjunction = conjunction
         self.settings = transSet
@@ -70,7 +70,7 @@ class Disjunction(object):
 class Conjunction(object):
     """@todo."""
 
-    def __init__(self, relation, transSet: TranslationSettings):
+    def __init__(self, *, relation, transSet: TranslationSettings):
         """@todo."""
         self.relation = relation
         self.settings = transSet
@@ -85,7 +85,7 @@ class Conjunction(object):
 class Relation(object):
     """@todo."""
 
-    def __init__(self, operator, lhs, rhs, transSet: TranslationSettings):
+    def __init__(self, *, operator, lhs, rhs, transSet: TranslationSettings):
         """@todo."""
         self.operator = operator
         self.lhs = lhs
@@ -100,7 +100,7 @@ class Relation(object):
 class Column(object):
     """@todo."""
 
-    def __init__(self, name, transSet: TranslationSettings, table=""):
+    def __init__(self, *, name, transSet: TranslationSettings, table=""):
         """@todo."""
         self.table = table
         self.name = name
@@ -116,7 +116,7 @@ class Column(object):
 class Call(object):
     """@todo."""
 
-    def __init__(self, operator, operands, transSet: TranslationSettings):
+    def __init__(self, *, operator, operands, transSet: TranslationSettings):
         """@todo."""
         self.operator = operator
         self.operands = operands
@@ -130,25 +130,27 @@ class Call(object):
 class Constant(object):
     """@todo."""
 
-    def __init__(self, value, transSet: TranslationSettings):
+    def __init__(self, *, value, transSet: TranslationSettings):
         """@todo."""
         self.value = value
         self.settings = transSet
 
     def sql(self):
         """@todo."""
-        tr = list(json.dumps(self.value))
-
-        if tr[0] == '"' and tr[-1] == '"':
+        if(type(self.value) == str):
+            tr = list(json.dumps(self.value))
             tr[0] = self.settings.quoteType
             tr[-1] = self.settings.quoteType
-        return str(tr)
+
+            return "".join(tr)
+        else:
+            return json.dumps(self.value)
 
 
 class RelationOp(object):
     """@todo."""
 
-    def __init__(self, value, transSet: TranslationSettings):
+    def __init__(self, *, value, transSet: TranslationSettings):
         """@todo."""
         self.value = value
         self.settings = transSet

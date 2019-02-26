@@ -125,7 +125,7 @@ def compile(q, input, unknowns, from_table=None):
     query_set = ast.QuerySet.from_data(queries)
     queryPreprocessor().process(query_set)
     clauses = queryTranslator(
-        from_table, sql.TranslationSettings(quoteType="'")
+        from_table, sql.TranslationSettings(quoteType="'") # 
     ).translate(query_set)
 
     return Result(True, clauses)
@@ -186,16 +186,17 @@ class queryTranslator(object):
         if len(self._conjunctions) > 0:
             clauses = [
                 sql.Where(
-                    sql.Disjunction(
-                        [conj for conj in self._conjunctions], transSet=self.transSet
+                    expr=sql.Disjunction(
+                        conjunction=[conj for conj in self._conjunctions], 
+                        transSet=self.transSet
                     ),
                     transSet=self.transSet,
                 )
             ]
         for (tables, conj) in self._joins:
-            pred = sql.InnerJoin(tables, conj, transSet=self.transSet)
+            pred = sql.InnerJoin(tables=tables, expr=conj, transSet=self.transSet)
             clauses.append(pred)
-        return sql.Union(clauses, transSet=self.transSet)
+        return sql.Union(clauses=clauses, transSet=self.transSet)
 
     def __call__(self, node):
         """@todo."""
@@ -215,7 +216,7 @@ class queryTranslator(object):
         """
         for expr in node.exprs:
             walk.walk(expr, self)
-        conj = sql.Conjunction(self._relations, transSet=self.transSet)
+        conj = sql.Conjunction(relation=self._relations, transSet=self.transSet)
         if len(self._tables) > 1:
             self._tables.remove(self._from_table)
             self._joins.append((self._tables, conj))
@@ -233,7 +234,7 @@ class queryTranslator(object):
         try:
             op = node.op()
             sql_op = sql.RelationOp(
-                self._sql_relation_operators[op], transSet=self.transSet
+                value=self._sql_relation_operators[op], transSet=self.transSet
             )
         except KeyError:
             raise TranslationError(
@@ -244,18 +245,18 @@ class queryTranslator(object):
             walk.walk(term, self)
         sql_operands = self._operands.pop()
         self._relations.append(
-            sql.Relation(sql_op, *sql_operands, transSet=self.transSet)
+            sql.Relation(operator=sql_op, lhs=sql_operands[0], rhs=sql_operands[1], transSet=self.transSet)
         )
 
     def _translate_term(self, node):
         """Pushes an element onto the operand stack."""
         v = node.value
         if isinstance(v, ast.Scalar):
-            self._operands[-1].append(sql.Constant(v.value, transSet=self.transSet))
+            self._operands[-1].append(sql.Constant(value=v.value, transSet=self.transSet))
         elif isinstance(v, ast.Ref) and len(v.terms) == 3:
             table = v.terms[1].value.value
             self._tables.add(table)
-            col = sql.Column(v.terms[2].value.value, table)
+            col = sql.Column(name=v.terms[2].value.value, transSet=self.transSet, table=table)
             self._operands[-1].append(col)
         elif isinstance(v, ast.Call):
             try:
@@ -268,7 +269,7 @@ class queryTranslator(object):
                 walk.walk(term, self)
             sql_operands = self._operands.pop()
             self._operands[-1].append(
-                sql.Call(sql_op, sql_operands, transSet=self.transSet)
+                sql.Call(operator=sql_op, operands=sql_operands, transSet=self.transSet)
             )
         else:
             raise TranslationError(
