@@ -126,14 +126,16 @@ def compile(q, input, unknowns, from_table=None):
     return Result(True, clauses)
 
 
-def splice(SELECT, FROM, WHERE='', decision=None):
+def splice(SELECT, FROM, WHERE='', decision=None, sql_kwargs=None):
     """Returns a SQL query as a string constructed from the caller's provided
     values and the decision returned by compile."""
     sql = 'SELECT ' + SELECT + ' FROM ' + FROM
     if decision is not None and decision.sql is not None:
         queries = [sql] * len(decision.sql.clauses)
         for i, clause in enumerate(decision.sql.clauses):
-            queries[i] = queries[i] + ' ' + clause.sql()
+            if sql_kwargs is None:
+                sql_kwargs = {}
+            queries[i] = queries[i] + ' ' + clause.sql(**sql_kwargs)
             if WHERE:
                 queries[i] = queries[i] + ' AND (' + WHERE + ')'
     return ' UNION '.join(queries)

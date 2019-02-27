@@ -11,34 +11,34 @@ class InnerJoin(object):
         self.tables = tables
         self.expr = expr
 
-    def sql(self):
-        return ' '.join(['INNER JOIN ' + t for t in self.tables]) + ' ON ' + self.expr.sql()
+    def sql(self, **kwargs):
+        return ' '.join(['INNER JOIN ' + t for t in self.tables]) + ' ON ' + self.expr.sql(**kwargs)
 
 
 class Where(object):
     def __init__(self, expr):
         self.expr = expr
 
-    def sql(self):
-        return 'WHERE ' + self.expr.sql()
+    def sql(self, **kwargs):
+        return 'WHERE ' + self.expr.sql(**kwargs)
 
 
 class Disjunction(object):
     def __init__(self, conjunction):
         self.conjunction = conjunction
 
-    def sql(self):
-        return '(' + " OR ".join([c.sql() for c in self.conjunction]) + ')'
+    def sql(self, **kwargs):
+        return '(' + " OR ".join([c.sql(**kwargs) for c in self.conjunction]) + ')'
 
 
 class Conjunction(object):
     def __init__(self, relation):
         self.relation = relation
 
-    def sql(self):
+    def sql(self, **kwargs):
         if len(self.relation) == 0:
             return '1'
-        return '(' + " AND ".join([r.sql() for r in self.relation]) + ')'
+        return '(' + " AND ".join([r.sql(**kwargs) for r in self.relation]) + ')'
 
 
 class Relation(object):
@@ -47,8 +47,8 @@ class Relation(object):
         self.lhs = lhs
         self.rhs = rhs
 
-    def sql(self):
-        return "%s %s %s" % (self.lhs.sql(), self.operator.sql(), self.rhs.sql())
+    def sql(self, **kwargs):
+        return "%s %s %s" % (self.lhs.sql(**kwargs), self.operator.sql(**kwargs), self.rhs.sql(**kwargs))
 
 
 class Column(object):
@@ -56,7 +56,7 @@ class Column(object):
         self.table = table
         self.name = name
 
-    def sql(self):
+    def sql(self, **kwargs):
         if self.table:
             return "%s.%s" % (self.table, self.name)
         return str(self.name)
@@ -67,15 +67,18 @@ class Call(object):
         self.operator = operator
         self.operands = operands
 
-    def sql(self):
-        return self.operator + '(' + ', '.join(o.sql() for o in self.operands) + ')'
+    def sql(self, **kwargs):
+        return self.operator + '(' + ', '.join(o.sql(**kwargs) for o in self.operands) + ')'
 
 
 class Constant(object):
     def __init__(self, value):
         self.value = value
 
-    def sql(self):
+    def sql(self, **kwargs):
+        if kwargs.get('use_single_quotes', False):
+            if isinstance(self.value, basestring):
+                return "'" + self.value + "'"
         return json.dumps(self.value)
 
 
@@ -83,7 +86,7 @@ class RelationOp(object):
     def __init__(self, value):
         self.value = value
 
-    def sql(self):
+    def sql(self, **kwargs):
         return self.value
 
 

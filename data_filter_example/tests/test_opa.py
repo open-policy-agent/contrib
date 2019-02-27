@@ -362,6 +362,14 @@ def test_compile_multi_table(note, input, policy, exp_defined, exp_sql):
         clauses,
     )
 
+def test_single_quote_option():
+    clear_policies()
+    put_policy('''package test
+    p { data.q[x].a = "foo" }
+    ''')
+    result = opa.compile('data.test.p == true', {}, ['q'], 'q')
+    assert [c.sql(use_single_quotes=True) for c in result.sql.clauses] == ["WHERE ((q.a = 'foo'))"]
+
 
 def crunch(query, input, unknowns, from_table, policy, exp_defined, exp_sql):
     clear_policies()
