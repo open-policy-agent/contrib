@@ -64,6 +64,10 @@ None
 """
 
 import requests
+import shutil
+import tempfile
+import os
+import subprocess
 import json
 from collections import namedtuple
 from rego import ast, walk
@@ -93,24 +97,58 @@ class Result(object):
         self.sql = sql
 
 
-def compile(q, input, unknowns, from_table=None):
-    """Returns a :class:`Result` that can be interpreted by the app to enforce
-    the policy."""
-
-    # Invoke OPA's Compile API and process response.
+def compile_http(query, input, unknowns):
+    """Returns a set of compiled queries."""
     response = requests.post(
         'http://localhost:8181/v1/compile',
         data=json.dumps({
-            'query': q,
+            'query': query,
             'input': input,
-            'unknowns': ['data.' + u for u in unknowns],
+            'unknowns': unknowns,
         }))
-
     body = response.json()
     if response.status_code != 200:
         raise Exception('%s: %s' % (body.code, body.message))
+    return body.get('result', {}).get('queries', [])
 
-    queries = body.get('result', {}).get('queries', [])
+
+def compile_command_line(data_files):
+    """Returns a function that can be called to compile a query using OPA's eval subcommand."""
+    def wrapped(query, input, unknowns):
+        args = ['opa', 'eval', '--partial', '--format', 'json']
+        for u in unknowns:
+            args.extend(['--unknowns', u])
+        dirpath = tempfile.mkdtemp()
+        try:
+            data_dirpath = os.path.join(dirpath, 'data')
+            os.makedirs(data_dirpath)
+            for filename, content in data_files.items():
+                with open(os.path.join(data_dirpath, filename), 'w') as f:
+                    f.write(content)
+            args.extend(['--data', data_dirpath])
+            if input is not None:
+                input_path = os.path.join(dirpath, 'input.json')
+                with open(input_path, 'w') as f:
+                    json.dump(input, f)
+                args.extend(['--input', input_path])
+            args.append(query)
+            output = subprocess.check_output(args, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            raise Exception("exit code %d: command: %s: %s" % (e.returncode, e.cmd, e.output))
+        finally:
+            shutil.rmtree(dirpath)
+        return json.loads(output).get('partial', {}).get('queries', [])
+    return wrapped
+
+
+def compile(q, input, unknowns, from_table=None, compile_func=None):
+    """Returns a :class:`Result` that can be interpreted by the app to enforce
+    the policy."""
+
+    if compile_func is None:
+        compile_func = compile_http
+
+    queries = compile_func(query=q, input=input, unknowns=['data.' + u for u in unknowns])
 
     # Check if query is never or always defined.
     if len(queries) == 0:

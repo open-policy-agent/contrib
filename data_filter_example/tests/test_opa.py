@@ -3,22 +3,6 @@ import pytest
 import requests
 
 
-def put_policy(str):
-    """Inserts a policy into OPA."""
-    resp = requests.put('http://localhost:8181/v1/policies/test', data=str)
-    resp.raise_for_status()
-
-
-def clear_policies():
-    """Deletes existing policies in OPA."""
-    resp = requests.get("http://localhost:8181/v1/policies")
-    resp.raise_for_status()
-    body = resp.json()
-    for policy in body["result"]:
-        resp = requests.delete("http://localhost:8181/v1/policies/" + policy["id"])
-        resp.raise_for_status()
-
-
 one_table_assert_cases = [
     ('trivial', {
         "a": {
@@ -363,19 +347,20 @@ def test_compile_multi_table(note, input, policy, exp_defined, exp_sql):
     )
 
 def test_single_quote_option():
-    clear_policies()
-    put_policy('''package test
-    p { data.q[x].a = "foo" }
-    ''')
-    result = opa.compile('data.test.p == true', {}, ['q'], 'q')
+    result = opa.compile('data.test.p == true', {}, ['q'], 'q', compile_func=opa.compile_command_line({
+        'test.rego': '''package test
+
+        p { data.q[x].a = "foo" }
+        '''
+    }))
     assert [c.sql(use_single_quotes=True) for c in result.sql.clauses] == ["WHERE ((q.a = 'foo'))"]
 
 
 def crunch(query, input, unknowns, from_table, policy, exp_defined, exp_sql):
-    clear_policies()
-    put_policy(policy)
     try:
-        result = opa.compile(query, input, unknowns, from_table)
+        result = opa.compile(query, input, unknowns, from_table, compile_func=opa.compile_command_line({
+            'test.rego': policy,
+        }))
     except opa.TranslationError as e:
         if not isinstance(exp_defined, opa.TranslationError):
             raise
