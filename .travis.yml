@@ -4,4 +4,7 @@ go:
 - '1.10'
 services:
 - docker
+install:
+  - ./build/install-opa.sh
+  - export PATH=$PATH:$PWD
 script: make build
