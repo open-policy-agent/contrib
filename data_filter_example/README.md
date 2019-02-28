@@ -4,7 +4,13 @@ This directory contains a sample server that uses OPA's Compile API to perform
 data filtering and authorization. When the server receives API requests it asks
 OPA for a set of conditions to apply to the SQL query that serves the request.
 
-The server itself is implemented in Python using Flask asnd and sqlite3.
+The server itself is implemented in Python using Flask and and
+sqlite3.
+
+## Status
+
+The Rego → SQL translation implemented in this directory should be
+considered **experimental** and is only tested against sqlite.
 
 ## Install
 
