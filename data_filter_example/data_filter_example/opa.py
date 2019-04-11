@@ -14,14 +14,14 @@ Posts can be listed (e.g., GET /posts) or read individually (e.g., GET /posts/12
     package example
 
     allow = true {
-        input.method = "get"
+        input.method = "GET"
         input.path = ["posts", post_id]
         allowed[x]
         x.id = post_id
     }
 
     allow = true {
-        input.method = "get"
+        input.method = "GET"
         input.path = ["posts"]
         allowed[x]
     }
@@ -37,7 +37,7 @@ Posts can be listed (e.g., GET /posts) or read individually (e.g., GET /posts/12
 With the above policy loaded into OPA, you can invoke compile:
 
 >>> from data_filter_example import opa
->>> result = opa.compile(q='data.example.allow==true', input={'method':'get', 'path': ['posts'], 'user': 'bob'}, unknowns=['posts'])
+>>> result = opa.compile(q='data.example.allow==true', input={'method':'GET', 'path': ['posts'], 'user': 'bob'}, unknowns=['posts'])
 
 The result will contain the SQL clauses to apply to your query.
 
@@ -47,7 +47,7 @@ u'WHERE (("bob" = posts.author))'
 On the other hand if the query is NEVER defined, the `defined` attribute will
 be False.
 
->>> result = opa.compile(q='data.example.allow==true', input={'method':'get', 'path': ['deadbeef'], 'user': 'bob'}, unknowns=['posts'])
+>>> result = opa.compile(q='data.example.allow==true', input={'method':'GET', 'path': ['deadbeef'], 'user': 'bob'}, unknowns=['posts'])
 >>> result.defined
 False
 
@@ -56,7 +56,7 @@ The last part of the policy says that super users can access the API
 unconditionally. In this case, the `defined` attribute will be True but the
 `sql` attribute will be None.
 
->>> result = opa.compile(q='data.example.allow==true', input={'method':'get', 'path': ['deadbeef'], 'user': 'bob'}, unknowns=['posts'])
+>>> result = opa.compile(q='data.example.allow==true', input={'method':'GET', 'path': ['deadbeef'], 'user': 'bob'}, unknowns=['posts'])
 >>> result.defined
 True
 >>> print result.sql
