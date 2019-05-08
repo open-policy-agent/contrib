@@ -1,0 +1,168 @@
+{
+	"info": {
+		"_postman_id": "a751ea1c-ffe1-466e-973f-09c96e2790c7",
+		"name": "OPA",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Data API",
+			"item": [
+				{
+					"name": "create document",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rules\": [\n        {\n            \"table\": \"FILTER\",\n            \"chain\": \"INPUT\",\n            \"protocol\": \"TCP\",\n            \"destination_address\": \"172.17.12.2\",\n            \"destination_port\": \"8181\",\n            \"action\": \"ACCEPT\"\n        },\n        {\n            \"table\": \"FILTER\",\n            \"chain\": \"OUTPUT\",\n            \"protocol\": \"UDP\",\n            \"destination_address\": \"172.17.12.2/16\",\n            \"destination_port\": \"8000\",\n            \"action\": \"DROP\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"data",
+								"rules",
+								"zone-1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get document",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"data",
+								"rules",
+								"zone-1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "edit document",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"op\": \"add\",\n        \"path\": \"/rules/1\",\n        \"value\": {\n            \"table\": \"FILTER\",\n            \"chain\": \"OUTPUT\",\n            \"protocol\": \"UDP\",\n            \"destination_address\": \"172.17.12.2/28\",\n            \"destination_port\": \"8001\",\n            \"action\": \"DROP\"\n        }\n    }\n]"
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"data",
+								"rules",
+								"zone-1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete document",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"data",
+								"rules",
+								"zone-1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "watch document",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/data/rules/zone-1?watch&pretty=true",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"data",
+								"rules",
+								"zone-1"
+							],
+							"query": [
+								{
+									"key": "watch",
+									"value": null
+								},
+								{
+									"key": "pretty",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
