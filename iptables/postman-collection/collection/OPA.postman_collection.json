@@ -22,10 +22,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"rules\": [\n        {\n            \"table\": \"FILTER\",\n            \"chain\": \"INPUT\",\n            \"protocol\": \"TCP\",\n            \"destination_address\": \"172.17.12.2\",\n            \"destination_port\": \"8181\",\n            \"action\": \"ACCEPT\"\n        },\n        {\n            \"table\": \"FILTER\",\n            \"chain\": \"OUTPUT\",\n            \"protocol\": \"UDP\",\n            \"destination_address\": \"172.17.12.2/16\",\n            \"destination_port\": \"8000\",\n            \"action\": \"DROP\"\n        }\n    ]\n}"
+							"raw": "{\n    \"zone1\": [\n        {\n            \"table\": \"FILTER\",\n            \"chain\": \"INPUT\",\n            \"protocol\": \"TCP\",\n            \"destination_address\": \"172.17.12.2\",\n            \"destination_port\": \"8181\",\n            \"action\": \"ACCEPT\"\n        },\n        {\n            \"table\": \"FILTER\",\n            \"chain\": \"OUTPUT\",\n            \"protocol\": \"UDP\",\n            \"destination_address\": \"172.17.12.2/16\",\n            \"destination_port\": \"8000\",\n            \"action\": \"DROP\"\n        }\n    ]\n}"
 						},
 						"url": {
-							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"raw": "http://localhost:8181/v1/data/rules",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -34,8 +34,7 @@
 							"path": [
 								"v1",
 								"data",
-								"rules",
-								"zone-1"
+								"rules"
 							]
 						}
 					},
@@ -51,7 +50,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"raw": "http://localhost:8181/v1/data/rules",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -60,8 +59,7 @@
 							"path": [
 								"v1",
 								"data",
-								"rules",
-								"zone-1"
+								"rules"
 							]
 						}
 					},
@@ -81,10 +79,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "[\n    {\n        \"op\": \"add\",\n        \"path\": \"/rules/1\",\n        \"value\": {\n            \"table\": \"FILTER\",\n            \"chain\": \"OUTPUT\",\n            \"protocol\": \"UDP\",\n            \"destination_address\": \"172.17.12.2/28\",\n            \"destination_port\": \"8001\",\n            \"action\": \"DROP\"\n        }\n    }\n]"
+							"raw": "[\n    {\n        \"op\": \"add\",\n        \"path\": \"/rules/zone1/0\",\n        \"value\": {\n            \"table\": \"NAT\",\n            \"chain\": \"OUTPUT\",\n            \"protocol\": \"TCP\",\n            \"destination_address\": \"192.17.12.2/32\",\n            \"destination_port\": \"80\",\n            \"action\": \"DROP\"\n        }\n    }\n]"
 						},
 						"url": {
-							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"raw": "http://localhost:8181/v1/data",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -92,9 +90,7 @@
 							"port": "8181",
 							"path": [
 								"v1",
-								"data",
-								"rules",
-								"zone-1"
+								"data"
 							]
 						}
 					},
@@ -110,7 +106,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "http://localhost:8181/v1/data/rules/zone-1",
+							"raw": "http://localhost:8181/v1/data/rules/zone1",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -120,7 +116,7 @@
 								"v1",
 								"data",
 								"rules",
-								"zone-1"
+								"zone1"
 							]
 						}
 					},
@@ -136,7 +132,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "http://localhost:8181/v1/data/rules/zone-1?watch&pretty=true",
+							"raw": "http://localhost:8181/v1/data/rules?watch&pretty=true",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -145,8 +141,7 @@
 							"path": [
 								"v1",
 								"data",
-								"rules",
-								"zone-1"
+								"rules"
 							],
 							"query": [
 								{
@@ -157,6 +152,129 @@
 									"key": "pretty",
 									"value": "true"
 								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Query API",
+			"item": [
+				{
+					"name": "simple query",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"query\":\"data.rules[_][i].action == \\\"DROP\\\";data.rules[_][i]=rule\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/query",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"query"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Policy API",
+			"item": [
+				{
+					"name": "Create Policy",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "package opa.rules\n\nimport data.rules\n\ninput = {\n    \"zonename\":\"zone1\",\n    \"action\":\"DROP\"\n}\n\nfetch_rules[result] {\n    zonerules := rules[input.zonename]\n    result := zonerules[_]\n    result.action == input.action\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/policies/rules",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"policies",
+								"rules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Policy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/policies/rules",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"policies",
+								"rules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Evalute Policy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8181/v1/data/opa/rules/fetch_rules",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8181",
+							"path": [
+								"v1",
+								"data",
+								"opa",
+								"rules",
+								"fetch_rules"
 							]
 						}
 					},
