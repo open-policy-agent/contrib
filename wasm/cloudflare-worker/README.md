@@ -2,6 +2,8 @@
 This example shows making a [Cloudflare Worker](https://www.cloudflare.com/products/cloudflare-workers/)
 which can enforce Rego Policies that have been compiled into WebAssembly (wasm).
 
+![High Level Diagram](./docs/CF-worker.png)
+
 ## The Worker
 
 The worker is a single javascript file that uses some `npm` modules, most importantly
