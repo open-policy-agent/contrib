@@ -1,4 +1,4 @@
-package utils
+package main
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 
 // ValidateEndpointFlag validate the value of flag provided through --opa-endpoint "host:port"
 // i.e. check for valid "host:port" value
-func ValidateEndpointFlag(endpoint string) error {
+func validateEndpointFlag(endpoint string) error {
 	host,port,err := net.SplitHostPort(endpoint)
 	if err != nil {
 		return err
@@ -30,7 +30,7 @@ func ValidateEndpointFlag(endpoint string) error {
 
 // ValidateDataDirFlag validate the value of flag provided through --watch-data-dir "path to data directory"
 // i.e. check for valid directory path
-func ValidateDataDirFlag(datadir string) error {
+func validateDataDirFlag(datadir string) error {
 	info,err := os.Stat(datadir)
 	if _,ok := err.(*os.PathError) ; ok {
 		return fmt.Errorf("%s: no such directory found, provided through --watch-data-dir flag",datadir)
@@ -45,7 +45,7 @@ func ValidateDataDirFlag(datadir string) error {
 
 // ValidatePolicyDirFlag validate the value of flag provided through --watch-policy-dir "path to policy directory"
 // i.e. check for valid directory path
-func ValidatePolicyDirFlag(policydir string) error {
+func validatePolicyDirFlag(policydir string) error {
 	info,err := os.Stat(policydir)
 	if _,ok := err.(*os.PathError) ; ok {
 		return fmt.Errorf("%s: no such directory found, provided through --watch-policy-dir flag",policydir)

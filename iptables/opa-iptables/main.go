@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	"os"
 
-	"github.com/contrib/iptables/opa-iptables/utils"
 	"github.com/contrib/iptables/opa-iptables/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -31,16 +29,15 @@ func main() {
 	if *OpaEndpoint == "" || *DataDir == "" || *PolicyDir == "" {
 		flag.Usage()
 		logger.Fatal("--opa-endpoint | --watch-data-dir | --watch-policy-dir are required flags. Please provides values for those flags!")
-		os.Exit(0)
 	}
 	
-	err := utils.ValidateEndpointFlag(*OpaEndpoint)
+	err := validateEndpointFlag(*OpaEndpoint)
 	errorExit(err)
 
-	err = utils.ValidateDataDirFlag(*DataDir)
+	err = validateDataDirFlag(*DataDir)
 	errorExit(err)
 
-	err = utils.ValidatePolicyDirFlag(*PolicyDir)
+	err = validatePolicyDirFlag(*PolicyDir)
 	errorExit(err)
 
 	logger.WithFields(logrus.Fields{
