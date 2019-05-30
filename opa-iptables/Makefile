@@ -1,5 +1,5 @@
 BIN := opa-iptables
-PKG := github.com/contrib/opa-iptables
+PKG := github.com/open-policy-agent/contrib/opa-iptables
 VERSION := 0.0.1-dev
 ARCH := amd64
 COMMIT := $(shell ./build/get-git-commit.sh)
