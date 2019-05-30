@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/contrib/opa-iptables/cmd"
+	"github.com/open-policy-agent/contrib/opa-iptables/cmd"
 )
 
 func main() {
