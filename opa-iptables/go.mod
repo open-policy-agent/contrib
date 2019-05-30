@@ -1,4 +1,4 @@
-module github.com/contrib/opa-iptables
+module github.com/open-policy-agent/contrib/opa-iptables
 
 go 1.12
 

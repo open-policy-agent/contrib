@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/contrib/opa-iptables/pkg/version"
+	"github.com/open-policy-agent/contrib/opa-iptables/pkg/version"
 )
 
 // versionCmd represents the version command
