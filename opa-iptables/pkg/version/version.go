@@ -5,5 +5,5 @@ var (
 	// Version of current CLI
 	Version = ""
 	// git commit with this CLI build with
-	GitCommit = ""
+	Commit = ""
 )
