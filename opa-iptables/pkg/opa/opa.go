@@ -22,12 +22,11 @@ type Policy interface {
 
 type httpClient struct {
 	url string
-	prefix string
 	authentication string
 }
 
 func New(url string, auth string) Client {
-	return &httpClient{url,"",auth}
+	return &httpClient{url,auth}
 }
 
 func (c *httpClient) InsertPolicy(id string, data []byte) error {

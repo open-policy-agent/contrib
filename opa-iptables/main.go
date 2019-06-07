@@ -26,7 +26,7 @@ func main() {
 
 	if *OpaEndpoint == "" {
 		flag.Usage()
-		logger.Fatal("--opa-endpoint | --watch-data-dir | --watch-policy-dir are required flags. Please provides values for those flags!")
+		logger.Fatal("--opa-endpoint is required flags. Please provides values for those flags!")
 	}
 
 	logger.WithFields(logrus.Fields{
