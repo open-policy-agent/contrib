@@ -1,5 +1,11 @@
 package iptables
 
+import (
+	"strings"
+	"fmt"
+	"bytes"
+)
+
 // Rule reperesents an IPTable rule
 type Rule struct {
 	// This option specifies the packet matching table which the command should operate on.
@@ -122,4 +128,92 @@ type tcpFlags struct {
 	Flags []string `json:"flags"`
 	// Flags to be set.
 	FlagsSet []string `json:"flags_set"`
+}
+
+func addParam(buf *bytes.Buffer,param,flag string) {
+	if param != "" {
+		if param[0] == '!' {
+			fmt.Fprintf(buf," ! %s %s",flag,param[1:])
+		}else{
+			fmt.Fprintf(buf," %s %s",flag,param)
+		}
+	}
+}
+
+func addParams(buf *bytes.Buffer,params []string, flag string) {
+	for _,param := range params {
+		addParam(buf,param,flag)
+	}
+}
+
+func addMatch(buf *bytes.Buffer,param string) {
+	if param != "" {
+		fmt.Fprintf(buf," -m %s",param)
+	}
+}
+
+func addComment(buf *bytes.Buffer,comment string) {
+	if comment != "" {
+		addMatch(buf,"comment")
+		fmt.Fprintf(buf," --comment \"%s\"",comment)
+	}
+}
+
+func addIPRange(buf *bytes.Buffer,matchs []string, sourceRange, destinationRange string) {
+	for _,match := range matchs {
+		if match == "iprange" {
+			addParam(buf,sourceRange,"--src-range")
+			addParam(buf,destinationRange,"--dst-range")
+			return
+		}		
+	}
+	if sourceRange != "" || destinationRange != "" {
+		addMatch(buf,"iprange")
+		addParam(buf,sourceRange,"--src-range")
+		addParam(buf,destinationRange,"--dst-range")
+	}
+}
+
+func addTCPFlags(buf *bytes.Buffer,tf tcpFlags) {
+	if len(tf.Flags) > 0 && len(tf.FlagsSet) > 0 {
+		addParam(buf,strings.Join(tf.Flags,",")+" "+strings.Join(tf.FlagsSet,","),"--tcp-flags")
+	}
+}
+
+func addCTState(buf *bytes.Buffer,matchs,states []string) {
+	for _,match := range matchs {
+		if match == "conntrack" {
+			addParam(buf,strings.Join(states,","),"--ctstate")
+			return
+		}else if match == "state" {
+			addParam(buf,strings.Join(states,","),"--ctstate")
+			return
+		}
+	}
+	if len(states) > 0 {
+		addMatch(buf,"conntrack")
+		addParam(buf,strings.Join(states,","),"--ctstate")
+	}
+}
+
+// Construct IPTable rule from struct
+func (r *Rule) Construct() string {
+	var rule bytes.Buffer
+	addParam(&rule,r.Protocol,"-p")
+	addParams(&rule,r.Match,"-m")
+	addParam(&rule,r.SourceAddress,"-s")
+	addParam(&rule,r.SourcePort,"--sport")
+	addParam(&rule,r.DestinationAddress,"-d")
+	addParam(&rule,r.DestinationPort,"--dport")
+	addParam(&rule,r.InInterface,"-i")
+	addParam(&rule,r.OutInterface,"-o")
+	addParam(&rule,r.ToSource,"--to-source")
+	addParam(&rule,r.ToDestination,"--to-destination")
+	addParam(&rule,r.ToPorts,"--to-ports")
+	addIPRange(&rule,r.Match,r.SourceRange,r.DestinationRange)
+	addCTState(&rule,r.Match,r.Ctstate)
+	addTCPFlags(&rule,r.TCPFlags)
+	addParam(&rule,r.Jump,"-j")
+	addComment(&rule,r.Comment)
+	return rule.String()
 }
