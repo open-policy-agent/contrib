@@ -11,7 +11,8 @@ import (
 func main() {
 	OpaEndpoint := flag.String("opa-endpoint", "http://127.0.0.1:8181", "endpoint of opa in form of ip:port i.e. 192.33.0.1:8181")
 	ControllerAddr := flag.String("controller-host", "0.0.0.0", "controller host")
-	ControllerPort := flag.String("controller-port", "8080", "controller port on which it listen on")
+	// setting default port value to some high port to prevent accidentally block this port in IPTable rules
+	ControllerPort := flag.String("controller-port", "33455", "controller port on which it listen on")
 	LogFormat := flag.String("log-format", "text", "set log format. i.e. text | json | json-pretty")
 	LogLevel := flag.String("log-level", "info", "set log level. i.e. info | debug | error")
 

@@ -15,7 +15,7 @@ func init(){
 
 // Config defines format and level of logging for logger
 type Config struct {
-	// Format can be text | json | json-pretty. Default format is json.
+	// Format can be text | json | json-pretty. Default format is text.
 	Format string
 	// Level can be info | debug | error. Default level is info.
 	Level string
