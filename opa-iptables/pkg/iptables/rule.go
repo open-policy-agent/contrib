@@ -63,7 +63,7 @@ type Rule struct {
 	SourceRange string `json:"src_range"`
 
 	// This specifies a destination address to use with DNAT.
-	// ithout this, the destination address is never altered.
+	// Without this, the destination address is never altered.
 	ToDestination string `json:"to_destination"`
 
 	// This specifies a source address to use with SNAT.
@@ -112,7 +112,7 @@ type Rule struct {
 	Protocol string `json:"protocol"`
 
 	// TCP flags specification.
-	// tcp_flags expects a dict with the two keys flags and flags_set.
+	// tcp_flags expects a struct with the two keys flags and flags_set.
 	TCPFlags tcpFlags `json:"tcp_flags"`
 
 	// ctstate is a list of the connection states to match in the conntrack module.
