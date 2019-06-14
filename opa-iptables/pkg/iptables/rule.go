@@ -1,9 +1,12 @@
 package iptables
 
 import (
-	"strings"
 	"fmt"
-	"bytes"
+	"errors"
+	"strconv"
+	"strings"
+
+	goiptables "github.com/coreos/go-iptables/iptables"
 )
 
 // Rule reperesents an IPTable rule
@@ -130,90 +133,130 @@ type tcpFlags struct {
 	FlagsSet []string `json:"flags_set"`
 }
 
-func addParam(buf *bytes.Buffer,param,flag string) {
+type ruleSpec struct {
+	spec []string
+}
+
+func (rs *ruleSpec) addParam(param string, flag string) {
 	if param != "" {
 		if param[0] == '!' {
-			fmt.Fprintf(buf," ! %s %s",flag,param[1:])
+			rs.spec = append(rs.spec,"!",flag,param[1:])
 		}else{
-			fmt.Fprintf(buf," %s %s",flag,param)
+			rs.spec = append(rs.spec,flag,param)
 		}
 	}
 }
 
-func addParams(buf *bytes.Buffer,params []string, flag string) {
-	for _,param := range params {
-		addParam(buf,param,flag)
+func (rs *ruleSpec) addParams(params []string,flag string) {
+	if len(params) > 0 {
+		rs.spec = append(rs.spec,flag)
+		for _,param := range params {
+			rs.spec = append(rs.spec,param)
+		}
 	}
 }
 
-func addMatch(buf *bytes.Buffer,param string) {
+func (rs *ruleSpec) addMatch(param string) {
 	if param != "" {
-		fmt.Fprintf(buf," -m %s",param)
+		rs.spec = append(rs.spec,"-m",param)
 	}
 }
 
-func addComment(buf *bytes.Buffer,comment string) {
+func (rs *ruleSpec) addComment(comment string) {
 	if comment != "" {
-		addMatch(buf,"comment")
-		fmt.Fprintf(buf," --comment \"%s\"",comment)
+		rs.addMatch("comment")
+		rs.spec = append(rs.spec,"--comment",fmt.Sprintf("\"%s\"",comment))
 	}
 }
 
-func addIPRange(buf *bytes.Buffer,matchs []string, sourceRange, destinationRange string) {
+func (rs *ruleSpec) addIPRange(matchs []string, sourceRange, destinationRange string) {
 	for _,match := range matchs {
 		if match == "iprange" {
-			addParam(buf,sourceRange,"--src-range")
-			addParam(buf,destinationRange,"--dst-range")
+			rs.addParam(sourceRange,"--src-range")
+			rs.addParam(destinationRange,"--dst-range")
 			return
 		}		
 	}
 	if sourceRange != "" || destinationRange != "" {
-		addMatch(buf,"iprange")
-		addParam(buf,sourceRange,"--src-range")
-		addParam(buf,destinationRange,"--dst-range")
+		rs.addMatch("iprange")
+		rs.addParam(sourceRange,"--src-range")
+		rs.addParam(destinationRange,"--dst-range")
 	}
 }
 
-func addTCPFlags(buf *bytes.Buffer,tf tcpFlags) {
+func (rs *ruleSpec) addTCPFlags(tf tcpFlags) {
 	if len(tf.Flags) > 0 && len(tf.FlagsSet) > 0 {
-		addParam(buf,strings.Join(tf.Flags,",")+" "+strings.Join(tf.FlagsSet,","),"--tcp-flags")
+		rs.addParams([]string{strings.Join(tf.Flags,","),strings.Join(tf.FlagsSet,",")},"--tcp-flags")
 	}
 }
 
-func addCTState(buf *bytes.Buffer,matchs,states []string) {
+func (rs *ruleSpec) addCTState(matchs,states []string) {
 	for _,match := range matchs {
 		if match == "conntrack" {
-			addParam(buf,strings.Join(states,","),"--ctstate")
+			rs.addParam(strings.Join(states,","),"--ctstate")
 			return
 		}else if match == "state" {
-			addParam(buf,strings.Join(states,","),"--ctstate")
+			rs.addParam(strings.Join(states,","),"--ctstate")
 			return
 		}
 	}
 	if len(states) > 0 {
-		addMatch(buf,"conntrack")
-		addParam(buf,strings.Join(states,","),"--ctstate")
+		rs.addMatch("conntrack")
+		rs.addParam(strings.Join(states,","),"--ctstate")
 	}
 }
 
 // Construct IPTable rule from struct
-func (r *Rule) Construct() string {
-	var buf bytes.Buffer
-	addParam(&buf,r.Protocol,"-p")
-	addParams(&buf,r.Match,"-m")
-	addParam(&buf,r.SourceAddress,"-s")
-	addParam(&buf,r.SourcePort,"--sport")
-	addParam(&buf,r.DestinationAddress,"-d")
-	addParam(&buf,r.DestinationPort,"--dport")
-	addParam(&buf,r.InInterface,"-i")
-	addParam(&buf,r.OutInterface,"-o")
-	addParam(&buf,r.ToSource,"--to-source")
-	addParam(&buf,r.ToDestination,"--to-destination")
-	addParam(&buf,r.ToPorts,"--to-ports")
-	addIPRange(&buf,r.Match,r.SourceRange,r.DestinationRange)
-	addCTState(&buf,r.Match,r.Ctstate)
-	addTCPFlags(&buf,r.TCPFlags)
-	addParam(&buf,r.Jump,"-j")
-	addComment(&buf,r.Comment)
-	return buf.String()
+func (r *Rule) Construct() []string {
+	var rs ruleSpec
+	rs.addParam(r.Protocol,"-p")
+	rs.addParams(r.Match,"-m")
+	rs.addParam(r.SourceAddress,"-s")
+	rs.addParam(r.SourcePort,"--sport")
+	rs.addParam(r.DestinationAddress,"-d")
+	rs.addParam(r.DestinationPort,"--dport")
+	rs.addParam(r.InInterface,"-i")
+	rs.addParam(r.OutInterface,"-o")
+	rs.addIPRange(r.Match,r.SourceRange,r.DestinationRange)
+	rs.addCTState(r.Match,r.Ctstate)
+	rs.addTCPFlags(r.TCPFlags)
+	rs.addParam(r.Jump,"-j")
+	rs.addParam(r.ToSource,"--to-source")
+	rs.addParam(r.ToDestination,"--to-destination")
+	rs.addParam(r.ToPorts,"--to-ports")
+	rs.addComment(r.Comment)
+	return rs.spec
+}
+
+func (r *Rule) AddRule() error {
+	ipt,err := goiptables.NewWithProtocol(goiptables.ProtocolIPv4)
+	if err != nil {
+		return err
+	}
+
+	switch r.Action {
+	// inserts rulespec to specified table/chain (in specified pos)
+	case "insert":
+		if r.RuleNumber != "" {
+			ruleNum,err := strconv.Atoi(r.RuleNumber)
+			if err != nil {
+				return err
+			}
+			ipt.Insert(r.Table,r.Chain,ruleNum,r.Construct()...)
+		}else{
+			return errors.New("to use insert action ,you must need to provides rule_number")
+		}
+	default:
+		// appends rulespec to specified table/chain
+		return ipt.AppendUnique(r.Table,r.Chain,r.Construct()...)
+	}
+	return nil
+}
+
+func (r *Rule) DeleteRule() error {
+	ipt,err := goiptables.NewWithProtocol(goiptables.ProtocolIPv4)
+	if err != nil {
+		return err
+	}
+	return ipt.Delete(r.Table,r.Chain,r.Construct()...)
 }
