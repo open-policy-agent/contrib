@@ -4,3 +4,4 @@ env
 posts.db
 .pytest_cache
 .vscode
+*.gz

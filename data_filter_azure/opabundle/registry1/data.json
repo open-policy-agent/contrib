@@ -1,0 +1,22 @@
+{
+    "bob": {
+        "repositories": {
+            "repo1": {
+                "actions": ["read", "write"]
+            },
+            "repo2": {
+                "actions": ["*"]
+            }
+        },
+        "charts": {
+            "chart1": {
+                "actions": ["read", "write"]
+            }
+        },
+        "pipelines": {
+            "*": {
+                "actions": ["read"]
+            }
+        }
+    }
+}

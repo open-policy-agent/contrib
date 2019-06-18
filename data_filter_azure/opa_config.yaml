@@ -1,0 +1,10 @@
+services:
+  - name: bundleservice
+    url: http://127.0.0.1:5000/api
+
+bundle:
+  name: ${BUNDLE_TAR}
+  service: bundleservice
+  polling:
+      min_delay_seconds: 300
+      max_delay_seconds: 300
