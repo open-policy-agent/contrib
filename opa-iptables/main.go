@@ -8,7 +8,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var logger *logrus.Logger
+
 func main() {
+
 	OpaEndpoint := flag.String("opa-endpoint", "http://127.0.0.1:8181", "endpoint of opa in form of ip:port i.e. 192.33.0.1:8181")
 	LogFormat := flag.String("log-format", "text", "set log format. i.e. text | json | json-pretty")
 	LogLevel := flag.String("log-level", "info", "set log level. i.e. info | debug | error")
