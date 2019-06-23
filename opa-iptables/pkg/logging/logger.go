@@ -1,14 +1,14 @@
 package logging
 
 import (
-	"os"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
 // initialize logger
 var log = logrus.New()
 
-func init(){
+func init() {
 	// setting logger output to stdout
 	log.SetOutput(os.Stdout)
 }
@@ -26,19 +26,19 @@ func SetupLogging(config Config) {
 
 	switch config.Format {
 	case "text":
-		log.SetFormatter(&logrus.TextFormatter{TimestampFormat:"2006-01-02 15:04:05",DisableSorting:true,FullTimestamp:true,DisableLevelTruncation:true})
+		log.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", DisableSorting: true, FullTimestamp: true, DisableLevelTruncation: true})
 	case "json-pretty":
-		log.SetFormatter(&logrus.JSONFormatter{PrettyPrint:true,TimestampFormat:"2006-01-02 15:04:05"})
+		log.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true, TimestampFormat: "2006-01-02 15:04:05"})
 	case "json":
 		fallthrough
 	default:
-		log.SetFormatter(&logrus.JSONFormatter{TimestampFormat:"2006-01-02 15:04:05"})
+		log.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02 15:04:05"})
 	}
 
 	level := logrus.InfoLevel
 	if config.Level != "" {
 		var err error
-		level,err = logrus.ParseLevel(config.Level)
+		level, err = logrus.ParseLevel(config.Level)
 		if err != nil {
 			logrus.Fatalf("Unable to parse log level: %v", err)
 		}
