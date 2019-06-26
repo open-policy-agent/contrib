@@ -1,0 +1,6 @@
+*.pyc
+*.egg-info
+env
+posts.db
+.pytest_cache
+.vscode
