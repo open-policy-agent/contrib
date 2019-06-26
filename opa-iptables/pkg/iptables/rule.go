@@ -260,36 +260,3 @@ func (r *Rule) DeleteRule() error {
 	}
 	return ipt.Delete(r.Table,r.Chain,r.Construct()...)
 }
-
-func (r *Rule) AddRule() error {
-	ipt,err := goiptables.NewWithProtocol(goiptables.ProtocolIPv4)
-	if err != nil {
-		return err
-	}
-
-	switch r.Action {
-	// inserts rulespec to specified table/chain (in specified pos)
-	case "insert":
-		if r.RuleNumber != "" {
-			ruleNum, err := strconv.Atoi(r.RuleNumber)
-			if err != nil {
-				return err
-			}
-			ipt.Insert(r.Table, r.Chain, ruleNum, r.Construct()...)
-		} else {
-			return errors.New("to use insert action ,you must need to provides rule_number")
-		}
-	default:
-		// appends rulespec to specified table/chain
-		return ipt.AppendUnique(r.Table, r.Chain, r.Construct()...)
-	}
-	return nil
-}
-
-func (r *Rule) DeleteRule() error {
-	ipt, err := goiptables.NewWithProtocol(goiptables.ProtocolIPv4)
-	if err != nil {
-		return err
-	}
-	return ipt.Delete(r.Table, r.Chain, r.Construct()...)
-}
