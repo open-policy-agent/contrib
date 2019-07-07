@@ -1,10 +1,12 @@
 package controller
 
 import (
-	"strings"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
+
+	"github.com/open-policy-agent/contrib/opa-iptables/pkg/iptables"
 )
 
 func (c *Controller) webhookHandler() http.HandlerFunc {
@@ -25,7 +27,7 @@ func (c *Controller) webhookHandler() http.HandlerFunc {
 				return
 			}
 
-			queryPath := strings.TrimPrefix(payload.QueryPath,"/")
+			queryPath := strings.TrimPrefix(payload.QueryPath, "/")
 			res, err := c.handleQuery(queryPath, payload.Input)
 			if err != nil {
 				c.logger.Errorf("Error while quering OPA: %v", err)
@@ -37,33 +39,22 @@ func (c *Controller) webhookHandler() http.HandlerFunc {
 				return
 			}
 
-			var result Result
-			err = json.Unmarshal(res, &result)
+			ruleSet, err := iptables.UnmarshalRules(res)
 			if err != nil {
-				c.logger.Errorf("Error while Unmarshaling result: %v", err)
+				c.logger.Errorf("Error while Unmarshaling rules: %v", err)
 				return
 			}
 
-			if len(result.Rules) > 0 {
-				for _, rule := range result.Rules {
-					switch payload.Op {
-					case insertOp:
-						err := rule.AddRule()
-						if err != nil {
-							c.logger.Error(err)
-							continue
-						}
-					case deleteOp:
-						err := rule.DeleteRule()
-						if err != nil {
-							c.logger.Error(err)
-							continue
-						}
-					case testOp:
-						fallthrough
-					default:
-						c.logger.Info(rule.Construct())
-					}
+			if len(ruleSet.Rules) > 0 {
+				switch payload.Op {
+				case insertOp:
+					c.insertRules(ruleSet)
+				case deleteOp:
+					c.deleteRules(ruleSet)
+				case testOp:
+					fallthrough
+				default:
+					c.testRules(ruleSet)
 				}
 			} else {
 				c.logger.Error("Query didn't returned any IPTables rules")

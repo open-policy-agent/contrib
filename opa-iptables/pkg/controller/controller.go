@@ -14,16 +14,16 @@ import (
 )
 
 type Controller struct {
-	ListenAddr  string
-	logger      *logrus.Logger
-	opaClient   opa.Client
+	ListenAddr string
+	logger     *logrus.Logger
+	opaClient  opa.Client
 }
 
 func New(opaEndpoint, hostAddr, hostPort string) *Controller {
 	return &Controller{
-		logger:      logging.GetLogger(),
-		ListenAddr:  hostAddr + ":" + hostPort,
-		opaClient:   opa.New(opaEndpoint, ""),
+		logger:     logging.GetLogger(),
+		ListenAddr: hostAddr + ":" + hostPort,
+		opaClient:  opa.New(opaEndpoint, ""),
 	}
 }
 
