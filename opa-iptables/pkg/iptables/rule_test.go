@@ -239,6 +239,56 @@ func TestRuleConstruction(t *testing.T) {
 	}
 }
 
+func TestPrintRule(t *testing.T) {
+	var testcases = []struct{
+		rule Rule
+		result string
+	}{
+		{
+			Rule{
+				Table:           "filter",
+				Chain:           "INPUT",
+				Protocol:        "tcp",
+				DestinationPort: "8080",
+				Comment:         "block all incoming traffic to port 8080",
+				Jump:            "DROP",
+			},
+			"filter INPUT -p tcp --dport 8080 -j DROP -m comment --comment \"block all incoming traffic to port 8080\"",
+		},
+		{
+			Rule{
+				Table:           "nat",
+				Chain:           "PREROUTING",
+				Protocol:        "tcp",
+				InInterface:     "eth0",
+				DestinationPort: "80",
+				ToPorts:         "8080",
+				Jump:            "REDIRECT",
+				Comment:         "Redirect web traffic from port 80 to port 8080",
+			},
+			"nat PREROUTING -p tcp --dport 80 -i eth0 -j REDIRECT --to-ports 8080 -m comment --comment \"Redirect web traffic from port 80 to port 8080\"",
+		},
+		{
+			Rule{
+				Table: "filter",
+				Chain: "OUTPUT",
+				Protocol: "tcp",
+				TCPFlags: tcpFlags{
+					Flags:[]string{"ALL"},
+					FlagsSet:[]string{"ACK","RST","SYN","FIN"},
+				},
+				Jump: "DROP",
+			},
+			"filter OUTPUT -p tcp --tcp-flags ALL ACK,RST,SYN,FIN -j DROP",
+		},
+	}
+	for _,tt := range testcases {
+		if tt.rule.String() != tt.result {
+			t.Errorf("Expected: %v but got %v",tt.result,tt.rule.String())
+		}
+	}
+}
+
 
 func TestAddRule(t *testing.T) {
 	var testcases = []struct{
