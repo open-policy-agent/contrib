@@ -24,9 +24,6 @@ type Rule struct {
 	// like INPUT, FORWARD, OUTPUT, PREROUTING, POSTROUTING, SECMARK or CONNSECMARK.
 	Chain string `json:"chain,omitempty"`
 
-	// This specifies a comment that will be added to the rule.
-	Comment string `json:"comment,omitempty"`
-
 	// Destination port or port range specification. This can either be a service name or a port number.
 	// An inclusive range can also be specified, using the format first:last.
 	// If the first port is omitted, '0' is assumed; if the last is omitted, '65535' is assumed.
@@ -125,6 +122,9 @@ type Rule struct {
 	// Matches are evaluated first to last if specified as an array and work in short-circuit fashion,
 	// i.e. if one extension yields false, evaluation will stop.
 	Match []string `json:"match,omitempty"`
+
+	// This specifies a comment that will be added to the rule.
+	Comment string `json:"comment,omitempty"`
 }
 
 type TcpFlags struct {
