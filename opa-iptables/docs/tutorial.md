@@ -7,31 +7,51 @@ In this tutorial, you'll learn how can use OPA to **store**, **retrieve** and **
 
 ## Prerequisites
 This tutorial required the following components:
-- Docker for run OPA
+- [Docker Compose](https://docs.docker.com/compose/install/)
 - Linux host
 
 ## Steps
 
-## 1. Bootstrap the tutorial environment.
+## 1. Bootstrap the tutorial environment using Docker Compose.
 
-The first step is to run OPA container using docker.
+First, create a docker-compose.yml file that runs OPA and the demo web server.
+
+**docker-compose.yml**:
+
 ```
-# WARNING: OPA is NOT running with an authorization policy configured. This
-# means that clients can read and write policies in OPA. If you are
-# deploying OPA in an insecure environment, be sure to configure
-# authentication and authorization on the daemon. See the Security page for
-# details: https://www.openpolicyagent.org/docs/security.html.
-
-docker run -p 8181:8181 openpolicyagent/opa run --server --log-level=debug
+version: '2'
+services:
+  opa:
+    image: openpolicyagent/opa:0.12.1
+    ports:
+      - 8181:8181
+    # WARNING: OPA is NOT running with an authorization policy configured. This
+    # means that clients can read and write policies in OPA. If you are
+    # deploying OPA in an insecure environment, be sure to configure
+    # authentication and authorization on the daemon. See the Security page for
+    # details: https://www.openpolicyagent.org/docs/security.html.
+    command:
+      - "run"
+      - "--server"
+      - "--log-level=debug"
+  example_server:
+    image: urvil38/opa-iptables-example
+    ports:
+      - 9090:9090
+    environment:
+      - PORT=9090
 ```
-
+Then run docker-compose to pull and run the containers.
+```
+docker-compose -f docker-compose.yml up
+```
 The second step is to run `opa-iptables` controller to manage IPTable from OPA.
 
 ```
-sudo opa-iptables -opa-endpoint=http://127.0.0.1:8181 -controller-port=33455
+sudo ./opa-iptables -opa-endpoint=http://127.0.0.1:8181 -log-level debug
 ```
 
-## 2. Write an IPTable rules
+## 2. Write IPTable rules
 
 For this tutorial, We have the following topology:
 
@@ -39,43 +59,79 @@ For this tutorial, We have the following topology:
   <img width="800" height="600" src="./img/tutorial1.topology.001.jpeg">
 </p>
 
-Here, nginx is proxying traffic to web-server and web-server is connected to a database.
-For security reasons we want following constraints to apply on our host:
-- allow SSH(22) traffic to our host
-- allow HTTP(80) and HTTPS(443) traffic to our nginx server
-- the database only accept traffic from web-server
+This Demo Web Server is written in `Go`, for showing the functionality of IPTable rules. This server has one root endpoint. Using `curl` or `browser` you can make a request to that endpoint.
 
-To apply these constraints, we are going to use IPTables rules. If you are not familiar with how to write IPTable rules then checkout this document [IPTables.md](./IPTables.md)
-
-Following are the IPTable rules for above constrains:
+**Using curl:**
 
 ```
-[
-    {
-        "table":"filter",
-        "chain":"input",
-        "match":["multiport"],
-        "protocol":"tcp",
-        "destination_port":"80,443,33455,22",
-        "jump":"ACCEPT",
-        "comment":"allow traffic to port 80(HTTP), 443(HTTPS), 22(SSH), 9090(Web-Server) ,33455(controller)"
-    },
-    {
-        "table":"filter",
-        "chian":"input",
-        "protocol":"tcp",
-        "source":"127.0.0.1",
-        "source_port":"9090",
-        "destination_port":"5432",
-        "jump":"ACCEPT",
-        "comment":"only allow traffic to PostgreSQL from web-server"
-    }
-]
+curl localhost:9090/
 ```
 
-## 3. Add `data` document and `policy` into OPA.
+You get the following Response:
 
-Once we have rules, now it's time to add some context to those rules which help to query it from OPA. After that, we are ready for adding it to OPA.
+**Response:**
+
+```
+Server is running on port: 9090
+Hello world!!
+```
+
+For Demo purpose, we want to drop all the traffic to this web server. [IPTables](./IPTables.md) is a swiss-army knife for doing this kind of stuff. i.e manipulating traffic(packets) of Layer 4(TCP/IP).
+
+IPtable rule for doing this look like as following:
+
+```
+1. iptables -t FILTER -A INPUT -p tcp --dport 9090 -j DROP -m comment --comment "drop all traffic to web server"
+
+2. iptables -t FILTER -A INPUT -p tcp --dport 33455 -j ACCEPT -m comment --comment "always allow any traffic to our opa-iptables plugin"
+```
+
+>Note: `opa-iptables` plugin uses JSON representation of IPTable rules for storing and querying rules. You can convert the following rule to JSON representation as described in this [document](./IPTables.md) manually `OR` opa-iptables also provides a handly endpoint for doing the same thing. It has `/iptables/json` endpoint which returns JSON representation of rules.
+
+```
+curl -X POST localhost:33455/iptables/json -d \
+'iptables -t FILTER -A INPUT -p tcp --dport 9090 -j DROP -m comment --comment "drop all traffic to web server"\n 
+iptables -t FILTER -A INPUT -p tcp --dport 33455 -j ACCEPT -m comment --comment "always allow any traffic to our opa-iptables plugin"'
+```
+
+You get following Response:
+
+```
+[{
+    "table": "filter",
+    "chain": "INPUT",
+    "destination_port": "9090",
+    "jump": "DROP",
+    "protocol": "tcp",
+    "tcp_flags": {},
+    "ctstate": [
+        ""
+    ],
+    "match": [
+        "comment"
+    ],
+    "comment": "drop all traffic to web servern"
+},
+{
+    "table": "filter",
+    "chain": "INPUT",
+    "destination_port": "33455",
+    "jump": "ACCEPT",
+    "protocol": "tcp",
+    "tcp_flags": {},
+    "ctstate": [
+        ""
+    ],
+    "match": [
+        "comment"
+    ],
+    "comment": "always allow any traffic to our opa-iptables plugin"
+}]
+```
+
+## 3. Add `data` and `policy` into OPA.
+
+Once we have rules, now it's time to add some context to those rules which help to query it from OPA. After that, we are ready for adding it to OPA using OPA's REST API.
 
 **ruleset.json**:
 
@@ -88,25 +144,38 @@ cat > ruleset.json <<EOF
             "environment":"production",
             "owner":"bob"
         },
-        "rules": [
-            {
-                "table":"filter",
-                "chain":"input",
-                "match":["multiport"],
-                "protocol":"tcp",
-                "destination_port":"80,443,33455,22",
-                "jump":"ACCEPT",
-                "comment":"allow traffic to port 80(HTTP), 443(HTTPS), 22(SSH), 9090(Web-Server) ,33455(controller)"
-            },
-            {
-                "table":"filter",
-                "chain":"input",
-                "protocol":"tcp",
-                "source":"127.0.0.1",
-                "destination_port":"5432",
-                "jump":"ACCEPT",
-                "comment":"allow incoming PostgreSQL connections from a specific IP address 127.0.0.1"
-            }
+        "rules": 
+        [
+          {
+            "table": "filter",
+            "chain": "INPUT",
+            "destination_port": "9090",
+            "jump": "DROP",
+            "protocol": "tcp",
+            "tcp_flags": {},
+            "ctstate": [
+                ""
+            ],
+            "match": [
+                "comment"
+            ],
+            "comment": "drop all traffic to web servern"
+          },
+          {
+            "table": "filter",
+            "chain": "INPUT",
+            "destination_port": "33455",
+            "jump": "ACCEPT",
+            "protocol": "tcp",
+            "tcp_flags": {},
+            "ctstate": [
+                ""
+            ],
+            "match": [
+                "comment"
+            ],
+            "comment": "always allow any traffic to our opa-iptables plugin"
+          }
         ]
     }
 ]
@@ -132,7 +201,7 @@ package iptables
 
 import data.iptables.ruleset
 
-get_rules[result] {
+webserver_rules[result] {
     set := ruleset[_]
     set.metadata.type == input.type
     set.metadata.owner == input.owner
@@ -148,34 +217,7 @@ curl -X PUT --data-binary @security-policy.rego \
   localhost:8181/v1/policies/iptables
 ```
 
-## 4. Evalute policy and insert/delete/test rules into host
-
-`opa-iptables` controller exposes **webhook** at path `/v0/webhook` for querying rules stored in OPA. The webhook request has following payload:
-
-**Payload:**
-
-- **query_path**: 
-        path to policy rule which you wanted to evaluate.
-        In above example, query path could be 
-    ```
-    "iptables/get_rules" i.e. "<path_to_policy>/<rule_name>"
-    ```
-- **input**: 
-        Abritary key-value pair. When you query OPA, you can set the value of the input document which used during policy evaluation.
-        Example `input` document:
-
-    ```
-    "input" : {
-        "owner":"alice",
-        "type":"security"
-    }
-    ```
-- **operation**:
-        Operation describes what you want to do with IPTable rules returned by query.
-        There are three possible values of operation:
-    1. **insert**: Insert rules to host.
-    2. **delete** : Delete rules from host.
-    3. **test**: Validates rules and list out any errors in to stdout.
+## 4. Evaluate policy and insert/delete rules into the host
 
 Let's suppose we want to install all rules, which have type "security" and owned by "bob".
 
@@ -183,19 +225,72 @@ Example Request:
 
 ```
 curl -X POST \
-  http://127.0.0.1:33455/v0/webhook \
+  http://127.0.0.1:33455/iptables/insert?q=iptables/webserver_rules \
   -H 'Content-Type: application/json' \
   -d '{
-    "query_path":"iptables/get_rules",
     "input" : {
         "type" : "security",
         "owner" : "bob"
-    },
-    "operation":"insert"
+    }
 }'
 ```
 
 This request inserts IPTable rules into the host.
+
+**How I can confirm that this request will insert rules into the kernel?**
+
+There are multiple ways to ensure this:
+
+1. Checkout Log output of `opa-iptables` plugin.
+
+```
+INFO[2019-07-19 14:24:32] msg="Received Request" req_method=POST req_path=/iptables/insert?q=iptables/webserver_rules 
+INFO[2019-07-19 14:24:32] Inserted 2 out of 2 rules (2/2)
+```
+
+2. List out rules in specific table/chain using `/iptables/list/{table_name}/{chain_name}` endpoint:
+
+```
+curl http://127.0.0.1:33455/iptables/list/filter/input
+```
+
+You get following Response:
+
+```
+-P INPUT ACCEPT
+-A INPUT -p tcp -m tcp --dport 9090 -m comment --comment "\"drop all traffic to web servern\"" -j DROP
+-A INPUT -p tcp -m tcp --dport 33455 -m comment --comment "\"always allow any traffic to our opa-iptables plugin\"" -j ACCEPT
+```
+
+These are the rules which we have inserted. Right! 
+
+Now let's double-check that rules are inserted into the kernel by making to an HTTP request to our webserver:
+
+```
+curl http://localhost:9090/
+```
+
+**Result: You get nothing back as this HTTP request is blocked by our iptable rule.**
+
+## Clean Up
+
+1. Delete All rules which we inserted before, using the following request:
+
+```
+curl -X POST \
+  http://127.0.0.1:33455/iptables/delete?q=iptables/webserver_rules \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "input" : {
+        "type" : "security",
+        "owner" : "bob"
+    }
+}'
+```
+
+2. Stop all containers using `docker-compose -f docker-compose.yml down`
+
+3. Stop `opa-iptables` controller using `Ctrl+c`. which sends the `SIGINT` signal to the running process.
 
 ## Wrap Up
 Congratulations on finishing the tutorial!
