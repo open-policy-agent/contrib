@@ -1,72 +1,145 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/gorilla/mux"
+
+	"github.com/open-policy-agent/contrib/opa-iptables/pkg/converter"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/iptables"
 )
 
-func (c *Controller) webhookHandler() http.HandlerFunc {
+func (c *Controller) jsonRuleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c.logger.Infof("msg=\"Received Request\" req_method=%v req_path=%v\n", r.Method, r.URL)
-		if r.Method == http.MethodPost {
-			body, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				c.logger.Errorf("Error while reading body: %v", err)
-				return
-			}
-			defer r.Body.Close()
 
-			var payload Payload
-			err = json.Unmarshal(body, &payload)
-			if err != nil {
-				c.logger.Errorf("Error while unmarshalling webhook payload :%v", err)
-				return
-			}
+		defer r.Body.Close()
 
-			queryPath := strings.TrimPrefix(payload.QueryPath, "/")
-			res, err := c.handleQuery(queryPath, payload.Input)
-			if err != nil {
-				c.logger.Errorf("Error while quering OPA: %v", err)
-				return
+		jsonRules, err := converter.IPTableToJSON(r.Body)
+		if err != nil {
+			c.logger.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		var buf bytes.Buffer
+		for i, rule := range jsonRules {
+			// for first rule
+			if i == 0 {
+				buf.Write([]byte("["))
 			}
 
-			if len(string(res)) == 2 && string(res) == "{}" {
-				c.logger.Errorf("Provided query path \"%v\" is not valid", payload.QueryPath)
-				return
+			// add each rule to buffer
+			buf.WriteString(rule)
+
+			// add ',' and '\n' to each rule except last rule
+			if i != len(jsonRules)-1 {
+				buf.WriteByte(',')
+				buf.WriteByte('\n')
 			}
 
-			ruleSet, err := iptables.UnmarshalRules(res)
-			if err != nil {
-				c.logger.Errorf("Error while Unmarshaling rules: %v", err)
-				return
+			// for last rule
+			if i == len(jsonRules)-1 {
+				buf.Write([]byte("]"))
 			}
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf.Bytes())
+	}
+}
 
-			if len(ruleSet.Rules) > 0 {
-				switch payload.Op {
-				case insertOp:
-					c.insertRules(ruleSet)
-				case deleteOp:
-					c.deleteRules(ruleSet)
-				case testOp:
-					fallthrough
-				default:
-					c.testRules(ruleSet)
-				}
-			} else {
-				c.logger.Error("Query didn't returned any IPTables rules")
-			}
+func (c *Controller) insertHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ruleSet, err := c.handlePayload(r)
+		if err != nil {
+			c.logger.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
+		if len(ruleSet.Rules) > 0 {
+			c.insertRules(ruleSet)
 		} else {
-			res := "This endpoint don't support provided method"
-			resStatusCode := http.StatusMethodNotAllowed
-			w.Header().Add("Allow", http.MethodPost)
-			w.WriteHeader(resStatusCode)
-			w.Write([]byte(res))
-			c.logger.Errorf("msg=\"Sent Response\" req_method=%v req_path=%v res_bytes=%v res_status=%v\n", r.Method, r.URL, len(res), resStatusCode)
+			c.logger.Error("Query didn't returned any IPTables rules")
+		}
+	}
+}
+
+func (c *Controller) deleteHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ruleSet, err := c.handlePayload(r)
+		if err != nil {
+			c.logger.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if len(ruleSet.Rules) > 0 {
+			c.deleteRules(ruleSet)
+		} else {
+			c.logger.Error("Query didn't returned any IPTables rules")
+		}
+	}
+}
+
+type Payload struct {
+	Input interface{} `json:"input"`
+}
+
+func (c *Controller) handlePayload(r *http.Request) (iptables.RuleSet, error) {
+	c.logger.Infof("msg=\"Received Request\" req_method=%v req_path=%v\n", r.Method, r.URL)
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return iptables.RuleSet{}, fmt.Errorf("Error while reading body: %v", err)
+	}
+	defer r.Body.Close()
+
+	var payload Payload
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		return iptables.RuleSet{}, fmt.Errorf("Error while unmarshalling webhook payload :%v", err)
+	}
+
+	queryPath := strings.TrimPrefix(r.FormValue("q"), "/")
+	res, err := c.handleQuery(queryPath, payload.Input)
+	if err != nil {
+		return iptables.RuleSet{}, fmt.Errorf("Error while quering OPA: %v", err)
+	}
+
+	if len(string(res)) == 2 && string(res) == "{}" {
+		return iptables.RuleSet{}, fmt.Errorf("Provided query path \"%v\" is not valid", queryPath)
+	}
+
+	ruleSet, err := iptables.UnmarshalRules(res)
+	if err != nil {
+		return iptables.RuleSet{}, fmt.Errorf("Error while Unmarshaling rules: %v", err)
+	}
+	return ruleSet, nil
+}
+
+func (c *Controller) listRules() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		table := mux.Vars(r)["table"]
+		if table == "" {
+			table = "filter"
+		}
+		chain := mux.Vars(r)["chain"]
+		if chain == "" {
+			chain = "INPUT"
+		}
+		rules, err := iptables.ListRules(table, chain)
+		if err != nil {
+			c.logger.Error(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		for _, rule := range rules {
+			fmt.Fprintln(w, rule)
 		}
 	}
 }

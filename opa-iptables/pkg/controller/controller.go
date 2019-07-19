@@ -11,6 +11,7 @@ import (
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/logging"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/opa"
 	"github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 )
 
 type Controller struct {
@@ -33,14 +34,18 @@ func (c *Controller) Run() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v0/webhook", c.webhookHandler())
+	r := mux.NewRouter()
+	r.HandleFunc("/iptables/insert",c.insertHandler()).Methods("POST").Queries("q","")
+	r.HandleFunc("/iptables/delete",c.deleteHandler()).Methods("POST").Queries("q","")
+	r.HandleFunc("/iptables/list/{table}/{chain}",c.listRules()).Methods("GET")
+	r.HandleFunc("/iptables/list",c.listRules()).Methods("GET")
+	r.HandleFunc("/iptables/json",c.jsonRuleHandler()).Methods("POST")
 
 	server := http.Server{
 		Addr:         c.ListenAddr,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		Handler:      mux,
+		Handler:      r,
 	}
 
 	go func() {
