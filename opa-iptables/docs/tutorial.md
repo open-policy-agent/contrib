@@ -1,12 +1,12 @@
 # Managing IPTable rules with OPA
 
-In this tutorial, we going to learn how OPA is useful for managing(insert or delete) IPTable rules. OPA makes it easy to write fine-grained, context-aware policy to manage IPTable rules.
+In this tutorial, we are going to learn how OPA is useful for managing(insert or delete) IPTable rules. OPA makes it easy to write fine-grained, context-aware policy to manage IPTable rules.
  
 ## Goals 
 In this tutorial, you'll learn how can use OPA to **store**, **retrieve** and **apply** IPTable rules to Linux host.
 
 ## Prerequisites
-This tutorial required the following components:
+This tutorial requires the following components:
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - Linux host
 

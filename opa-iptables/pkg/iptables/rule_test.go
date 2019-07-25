@@ -141,7 +141,7 @@ func TestAddIPRange(t *testing.T) {
 			[]string{"tcp", "iprange"},
 			"192.168.1.100-192.168.1.199",
 			"192.168.1.100-192.168.1.199",
-			[]string{"--src-range", "192.168.1.100-192.168.1.199", "--dst-range", "192.168.1.100-192.168.1.199"},
+			[]string{"-m", "iprange", "--src-range", "192.168.1.100-192.168.1.199", "--dst-range", "192.168.1.100-192.168.1.199"},
 		},
 		{
 			[]string{},
@@ -168,12 +168,12 @@ func TestAddCTState(t *testing.T) {
 		{
 			[]string{"state"},
 			[]string{"NEW", "ESTABLISHED", "INVALID"},
-			[]string{"--ctstate", "NEW,ESTABLISHED,INVALID"},
+			[]string{"-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,INVALID"},
 		},
 		{
 			[]string{"conntrack", "state"},
 			[]string{"NEW", "ESTABLISHED", "INVALID"},
-			[]string{"--ctstate", "NEW,ESTABLISHED,INVALID"},
+			[]string{"-m", "conntrack", "--ctstate", "NEW,ESTABLISHED,INVALID"},
 		},
 		{
 			[]string{""},
@@ -287,55 +287,6 @@ func TestPrintRule(t *testing.T) {
 	for _,tt := range testcases {
 		if tt.rule.String() != tt.result {
 			t.Errorf("Expected: %v but got %v",tt.result,tt.rule.String())
-		}
-	}
-}
-
-
-func TestAddRule(t *testing.T) {
-	var testcases = []struct{
-		rule Rule
-	}{
-		{
-			Rule{
-				Table:           "filter",
-				Chain:           "INPUT",
-				Protocol:        "tcp",
-				DestinationPort: "8080",
-				Comment:         "block all incoming traffic to port 8080",
-				Jump:            "DROP",
-			},
-		},
-		{
-			Rule{
-				Table:           "nat",
-				Chain:           "PREROUTING",
-				Protocol:        "tcp",
-				InInterface:     "eth0",
-				DestinationPort: "80",
-				ToPorts:         "8080",
-				Jump:            "REDIRECT",
-				Comment:         "Redirect web traffic from port 80 to port 8080",
-			},
-		},
-		{
-			Rule{
-				Table: "filter",
-				Chain: "OUTPUT",
-				Protocol: "tcp",
-				TCPFlags: TcpFlags{
-					Flags:[]string{"ALL"},
-					FlagsSet:[]string{"ACK","RST","SYN","FIN"},
-				},
-				Jump: "DROP",
-			},
-		},
-	}
-
-	for _, tt := range testcases {
-		err := tt.rule.AddRule() 
-		if err != nil {
-			t.Errorf("Got error %s",err)
 		}
 	}
 }

@@ -1,6 +1,6 @@
 **Iptables** is used to set up, maintain, and inspect tables of IP packet filter rules in linux kernel. Several different tables may be defined. Each table contains a number of built-in chains and may also contain user-defined chains (Though user-defined chains are *not supported* right now)
 
-Each chian is a list of rules which can match a set of packets. Each rule specifies what to do with a packet that matches. This is called a `target`. Different tables has number of different targets.
+Each chain is a list of rules which can match a set of packets. Each rule specifies what to do with a packet that matches. This is called a `target`. Different tables has number of different targets.
 
 To learn more about IPtables you can check out manual page of linux iptables:  https://linux.die.net/man/8/iptables **(Not Newbie Friendly!!!)**
 
