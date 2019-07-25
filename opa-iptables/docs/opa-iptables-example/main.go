@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,11 +19,14 @@ func getEnv(env string) string {
 func main() {
 	port = getEnv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "9090"
 	}
 	fmt.Println("Server is running on port:",port)
 	http.HandleFunc("/",rootHandler)
-	http.ListenAndServe(":"+port,nil)
+	err := http.ListenAndServe(":"+port,nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"os"
 	"flag"
+	"fmt"
 
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/controller"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/logging"
+	"github.com/open-policy-agent/contrib/opa-iptables/pkg/version"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,8 +18,14 @@ func main() {
 	ControllerPort := flag.String("controller-port", "33455", "controller port on which it listen on")
 	LogFormat := flag.String("log-format", "text", "set log format. i.e. text | json | json-pretty")
 	LogLevel := flag.String("log-level", "info", "set log level. i.e. info | debug | error")
+	v := flag.Bool("v", false, "show version information")
 
 	flag.Parse()
+
+	if *v {
+		fmt.Printf("Version= %v\nCommit= %v\n", version.Version, version.Commit)
+		os.Exit(0)
+	}
 
 	logConfig := logging.Config{
 		Format: *LogFormat,
@@ -32,6 +41,6 @@ func main() {
 		"Log Level":    *LogLevel,
 	}).Info("Started Controller with following configuration:")
 
-	c := controller.New(*OpaEndpoint,*ControllerAddr,*ControllerPort)
+	c := controller.New(*OpaEndpoint, *ControllerAddr, *ControllerPort)
 	c.Run()
 }

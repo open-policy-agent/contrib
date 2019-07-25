@@ -51,7 +51,7 @@ func TestParse(t *testing.T) {
 		var iptFlagset IPTableflagSet
 		fs.InitFlagSet(&iptFlagset)
 		err := fs.Parse(strings.Split(tt.arguments, " "))
-		if err == tt.err {
+		if err != tt.err {
 			t.Errorf("wanted: %v, got: %v",tt.err,err)
 		}
 		if !reflect.DeepEqual(iptFlagset, tt.flagSet) {
