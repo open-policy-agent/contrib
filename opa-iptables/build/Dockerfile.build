@@ -1,6 +1,0 @@
-FROM golang:1.12-alpine
-
-MAINTAINER Urvil Patel <patelurvil38@gmail.com>
-
-RUN apk --no-cache add git ca-certificates && \
-    update-ca-certificates
