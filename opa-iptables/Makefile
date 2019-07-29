@@ -1,4 +1,4 @@
-VERSION := 1.0.0
+VERSION := 0.0.1-dev
 GO := go
 GOOS := linux
 
@@ -14,7 +14,7 @@ LDFLAGS := "-X github.com/open-policy-agent/contrib/opa-iptables/pkg/version.Ver
 GO111MODULE := on
 
 .PHONY: all
-all: test build
+all: test build clean
 
 .PHONY: version
 version:
@@ -28,10 +28,20 @@ docker-build:
 	@docker run -it --rm -v $$(pwd):/go/src/$(PKG) \
 		-e GOOS=$(GOOS) \
 		-e GO111MODULE=$(GO111MODULE) \
-		-w /go/src/$(PKG) urvil38/golang:1.12  \
+		-w /go/src/$(PKG) golang:1.13-rc-alpine  \
 		$(GO) build -o $(BIN) -ldflags $(LDFLAGS)
 
+	@docker build -t urvil38/opa-iptables \
+		-f Dockerfile \
+		.
+
 	@echo Successfully built $(BIN)
+
+push:
+	docker push urvil38/opa-iptables
+
+clean:
+	rm -f $(BIN) -y
 
 .PHONY: test
 test: go-test

@@ -19,9 +19,10 @@ First, create a docker-compose.yml file that runs OPA and the demo web server.
 **docker-compose.yml**:
 
 ```
-version: '2'
+version: '3'
 services:
   opa:
+    container_name: opa
     image: openpolicyagent/opa:0.12.1
     ports:
       - 8181:8181
@@ -35,20 +36,24 @@ services:
       - "--server"
       - "--log-level=debug"
   example_server:
+    container_name: web-server
     image: urvil38/opa-iptables-example
     ports:
       - 9090:9090
     environment:
       - PORT=9090
+  opa-iptables:
+    container_name: opa-iptables
+    image: urvil38/opa-iptables
+    cap_add:
+      - NET_ADMIN
+    network_mode: "host"
+    command:
+      - "-log-level=debug"
 ```
 Then run docker-compose to pull and run the containers.
 ```
 docker-compose -f docker-compose.yml up
-```
-The second step is to run `opa-iptables` controller to manage IPTable from OPA.
-
-```
-sudo ./opa-iptables -opa-endpoint=http://127.0.0.1:8181 -log-level debug
 ```
 
 ## 2. Write IPTable rules
