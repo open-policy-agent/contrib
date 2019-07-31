@@ -1,9 +1,10 @@
 package main
 
 import (
-	"os"
 	"flag"
 	"fmt"
+	"os"
+	"runtime"
 
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/controller"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/logging"
@@ -35,6 +36,17 @@ func main() {
 
 	logger := logging.GetLogger()
 
+	if runtime.GOOS != "linux" {
+		logger.Errorln("\"iptables\" utility is only supported on Linux kernel. It's seems like that you are not running Linux kernel.")
+		os.Exit(1)
+	}
+
+	if !iptablesExists() {
+		logger.Error("command \"iptables\" not found at path \"/sbin/iptables\".")
+		fmt.Println(installationHelp)
+		os.Exit(1)
+	}
+
 	logger.WithFields(logrus.Fields{
 		"OPA Endpoint": *OpaEndpoint,
 		"Log Format":   *LogFormat,
@@ -43,4 +55,11 @@ func main() {
 
 	c := controller.New(*OpaEndpoint, *ControllerAddr, *ControllerPort)
 	c.Run()
+}
+
+func iptablesExists() bool {
+	if _, err := os.Stat("/sbin/iptables"); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }

@@ -111,7 +111,7 @@ func (c *Controller) handlePayload(r *http.Request) (iptables.RuleSet, error) {
 	}
 
 	if len(string(res)) == 2 && string(res) == "{}" {
-		return iptables.RuleSet{}, fmt.Errorf("Provided query path \"%v\" is not valid", queryPath)
+		return iptables.RuleSet{}, fmt.Errorf("Provided query path \"%v\" is invalid or not exists", queryPath)
 	}
 
 	ruleSet, err := iptables.UnmarshalRules(res)

@@ -31,14 +31,14 @@ docker-build:
 		-w /go/src/$(PKG) golang:1.13-rc-alpine  \
 		$(GO) build -o $(BIN) -ldflags $(LDFLAGS)
 
-	@docker build -t urvil38/opa-iptables \
+	@docker build -t urvil38/opa-iptables:$(VERSION) \
 		-f Dockerfile \
 		.
 
 	@echo Successfully built $(BIN)
 
 push:
-	docker push urvil38/opa-iptables
+	docker push urvil38/opa-iptables:$(VERSION)
 
 clean:
 	rm -f $(BIN) -y
