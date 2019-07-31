@@ -46,8 +46,8 @@ func IPTableToJSON(reader io.Reader) ([]string, error) {
 	rules := strings.Split(string(b), "\n")
 	for _, rule := range rules {
 		fs := flag.NewFlagSet("iptables", flag.ContinueOnError)
-		var tableFlagset flag.IPTableflagSet
-		fs.InitFlagSet(&tableFlagset)
+		var flagSet flag.IPTableflagSet
+		fs.InitFlagSet(&flagSet)
 
 		// Parse line as a shell words
 		// i.e "iptables --comment "hello world""
@@ -64,7 +64,7 @@ func IPTableToJSON(reader io.Reader) ([]string, error) {
 			continue
 		}
 
-		rule, err := marshal(tableFlagset)
+		rule, err := marshal(flagSet)
 		if err != nil {
 			jsonRules = append(jsonRules, "\"Error: "+err.Error()+"\"")
 			continue

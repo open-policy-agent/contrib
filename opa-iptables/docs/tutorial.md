@@ -7,6 +7,7 @@ In this tutorial, you'll learn how can use OPA to **store**, **retrieve** and **
 
 ## Prerequisites
 This tutorial requires the following components:
+- [Docker](https://docs.docker.com/install/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - Linux host
 
@@ -44,10 +45,10 @@ services:
       - PORT=9090
   opa-iptables:
     container_name: opa-iptables
-    image: urvil38/opa-iptables
+    image: urvil38/opa-iptables:0.0.1-dev
     cap_add:
       - NET_ADMIN
-    network_mode: "host"
+    network_mode: host
     command:
       - "-log-level=debug"
 ```
@@ -164,7 +165,7 @@ cat > ruleset.json <<EOF
             "match": [
                 "comment"
             ],
-            "comment": "drop all traffic to web servern"
+            "comment": "drop all traffic to web server"
           },
           {
             "table": "filter",
@@ -242,7 +243,7 @@ curl -X POST \
 
 This request inserts IPTable rules into the host.
 
-**How I can confirm that this request will insert rules into the kernel?**
+**How can I confirm that this request will insert rules into the kernel?**
 
 There are multiple ways to ensure this:
 
@@ -263,7 +264,7 @@ You get following Response:
 
 ```
 -P INPUT ACCEPT
--A INPUT -p tcp -m tcp --dport 9090 -m comment --comment "\"drop all traffic to web servern\"" -j DROP
+-A INPUT -p tcp -m tcp --dport 9090 -m comment --comment "\"drop all traffic to web server\"" -j DROP
 -A INPUT -p tcp -m tcp --dport 33455 -m comment --comment "\"always allow any traffic to our opa-iptables plugin\"" -j ACCEPT
 ```
 
@@ -293,9 +294,23 @@ curl -X POST \
 }'
 ```
 
-2. Stop all containers using `docker-compose -f docker-compose.yml down`
+2. After deleting rules you can check that rules are successfully deleted by making an request to web server and you will get your response as you expected.
 
-3. Stop `opa-iptables` controller using `Ctrl+c`. which sends the `SIGINT` signal to the running process.
+**Using curl:**
+
+```
+curl localhost:9090/
+```
+
+**Response:**
+
+```
+Server is running on port: 9090
+Hello world!!
+```
+
+
+3. Stop all containers using `docker-compose -f docker-compose.yml down`
 
 ## Wrap Up
 Congratulations on finishing the tutorial!
