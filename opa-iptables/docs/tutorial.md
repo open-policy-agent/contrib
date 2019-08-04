@@ -95,7 +95,7 @@ IPtable rule for doing this look like as following:
 >Note: `opa-iptables` plugin uses JSON representation of IPTable rules for storing and querying rules. You can convert the following rule to JSON representation as described in this [document](./IPTables.md) manually `OR` opa-iptables also provides a handly endpoint for doing the same thing. It has `/iptables/json` endpoint which returns JSON representation of rules.
 
 ```
-curl -X POST localhost:33455/iptables/json -d \
+curl -X POST localhost:33455/v1/iptables/json -d \
 'iptables -t FILTER -A INPUT -p tcp --dport 9090 -j DROP -m comment --comment "drop all traffic to web server"\n 
 iptables -t FILTER -A INPUT -p tcp --dport 33455 -j ACCEPT -m comment --comment "always allow any traffic to our opa-iptables plugin"'
 ```
@@ -231,7 +231,7 @@ Example Request:
 
 ```
 curl -X POST \
-  http://127.0.0.1:33455/iptables/insert?q=iptables/webserver_rules \
+  http://127.0.0.1:33455/v1/iptables/insert?q=iptables/webserver_rules \
   -H 'Content-Type: application/json' \
   -d '{
     "input" : {
@@ -257,7 +257,7 @@ INFO[2019-07-19 14:24:32] Inserted 2 out of 2 rules (2/2)
 2. List out rules in specific table/chain using `/iptables/list/{table_name}/{chain_name}` endpoint:
 
 ```
-curl http://127.0.0.1:33455/iptables/list/filter/input
+curl http://127.0.0.1:33455/v1/iptables/list/filter/input
 ```
 
 You get following Response:
@@ -284,7 +284,7 @@ curl http://localhost:9090/
 
 ```
 curl -X POST \
-  http://127.0.0.1:33455/iptables/delete?q=iptables/webserver_rules \
+  http://127.0.0.1:33455/v1/iptables/delete?q=iptables/webserver_rules \
   -H 'Content-Type: application/json' \
   -d '{
     "input" : {

@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/logging"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/opa"
 	"github.com/sirupsen/logrus"
-	"github.com/gorilla/mux"
 )
 
 type Controller struct {
@@ -35,11 +35,11 @@ func (c *Controller) Run() {
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
 	r := mux.NewRouter()
-	r.HandleFunc("/iptables/insert",c.insertHandler()).Methods("POST").Queries("q","")
-	r.HandleFunc("/iptables/delete",c.deleteHandler()).Methods("POST").Queries("q","")
-	r.HandleFunc("/iptables/list/{table}/{chain}",c.listRules()).Methods("GET")
-	r.HandleFunc("/iptables/list",c.listRules()).Methods("GET")
-	r.HandleFunc("/iptables/json",c.jsonRuleHandler()).Methods("POST")
+	r.HandleFunc("/v1/iptables/insert", c.insertRuleHandler()).Methods("POST").Queries("q", "")
+	r.HandleFunc("/v1/iptables/delete", c.deleteRuleHandler()).Methods("POST").Queries("q", "")
+	r.HandleFunc("/v1/iptables/json", c.jsonRuleHandler()).Methods("POST")
+	r.HandleFunc("/v1/iptables/list/{table}/{chain}", c.listRulesHandler()).Methods("GET")
+	r.HandleFunc("/v1/iptables/list/all", c.listAllRulesHandler()).Methods("GET")
 
 	server := http.Server{
 		Addr:         c.ListenAddr,

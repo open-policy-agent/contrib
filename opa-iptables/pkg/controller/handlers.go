@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -16,7 +17,7 @@ import (
 
 func (c *Controller) jsonRuleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		c.logger.Infof("msg=\"Received Request\" req_method=%v req_path=%v\n", r.Method, r.URL)
 		defer r.Body.Close()
 
 		jsonRules, err := converter.IPTableToJSON(r.Body)
@@ -52,7 +53,19 @@ func (c *Controller) jsonRuleHandler() http.HandlerFunc {
 	}
 }
 
-func (c *Controller) insertHandler() http.HandlerFunc {
+// insertRuleHandler query OPA using provided payload through request and get iptables rules
+// and insert them to the kernel
+//
+//      Server Response:
+//
+//      200 OK           - 	 Successfully inserted given iptables rules
+//      400 Bad Request  -   If provided query path didn't resolve to any defined OPA policy
+//                           rule or server fail to parse JSON payload
+//      404 Not Found    -   OPA policy rule didn't return any iptables rules
+//      500 Server Error -   Fail to insert given iptables rules
+//
+//
+func (c *Controller) insertRuleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ruleSet, err := c.handlePayload(r)
 		if err != nil {
@@ -62,14 +75,31 @@ func (c *Controller) insertHandler() http.HandlerFunc {
 		}
 
 		if len(ruleSet.Rules) > 0 {
-			c.insertRules(ruleSet)
+			err := c.insertRules(ruleSet)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, "%s. Checkout log for more details", err)
+			}
 		} else {
 			c.logger.Error("Query didn't returned any IPTables rules")
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}
 }
 
-func (c *Controller) deleteHandler() http.HandlerFunc {
+// deleteRuleHandler query OPA using provided payload through request and get iptables rules
+// and delete them from the kernel
+//
+//      Server Response:
+//
+//      200 OK           - 	 Successfully deleted given iptables rules
+//      400 Bad Request  -   If provided query path didn't resolve to any defined OPA policy
+//                           rule or server fail to parse JSON payload
+//      404 Not Found    -   OPA policy rule didn't return any iptables rules
+//      500 Server Error -   Fail to delete given iptables rules
+//
+//
+func (c *Controller) deleteRuleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ruleSet, err := c.handlePayload(r)
 		if err != nil {
@@ -79,9 +109,14 @@ func (c *Controller) deleteHandler() http.HandlerFunc {
 		}
 
 		if len(ruleSet.Rules) > 0 {
-			c.deleteRules(ruleSet)
+			err := c.deleteRules(ruleSet)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintf(w, "%s. Checkout log for more details", err)
+			}
 		} else {
 			c.logger.Error("Query didn't returned any IPTables rules")
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}
 }
@@ -111,7 +146,7 @@ func (c *Controller) handlePayload(r *http.Request) (iptables.RuleSet, error) {
 	}
 
 	if len(string(res)) == 2 && string(res) == "{}" {
-		return iptables.RuleSet{}, fmt.Errorf("Provided query path \"%v\" is invalid or not exists", queryPath)
+		return iptables.RuleSet{}, fmt.Errorf("Provided query path \"%v\" is not valid path to policy rule", queryPath)
 	}
 
 	ruleSet, err := iptables.UnmarshalRules(res)
@@ -121,8 +156,9 @@ func (c *Controller) handlePayload(r *http.Request) (iptables.RuleSet, error) {
 	return ruleSet, nil
 }
 
-func (c *Controller) listRules() http.HandlerFunc {
+func (c *Controller) listRulesHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		c.logger.Infof("msg=\"Received Request\" req_method=%v req_path=%v\n", r.Method, r.URL)
 		table := mux.Vars(r)["table"]
 		if table == "" {
 			table = "filter"
@@ -144,6 +180,37 @@ func (c *Controller) listRules() http.HandlerFunc {
 	}
 }
 
+func (c *Controller) listAllRulesHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c.logger.Infof("msg=\"Received Request\" req_method=%v req_path=%v\n", r.Method, r.URL)
+		verboseStr := r.FormValue("verbose")
+		verbose := stringToBool(verboseStr)
+		var iptableTableList = [...]string{"filter", "nat"}
+
+		if verbose {
+			var buf bytes.Buffer
+			for _, table := range iptableTableList {
+				stdout, err := runCommand("/sbin/iptables", "-n", "-v", "-L", "-t", table)
+				if err != nil {
+					c.logger.Errorf("Unable to list iptables rule: %v",err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				buf.Write(stdout)
+			}
+			fmt.Fprint(w, buf.String())
+		} else {
+			stdout, err := runCommand("/sbin/iptables", "-S")
+			if err != nil {
+				c.logger.Errorf("Unable to list iptables rule: %v",err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			fmt.Fprint(w, string(stdout))
+		}
+	}
+}
+
 func (c *Controller) handleQuery(path string, data interface{}) ([]byte, error) {
 	input, err := marshalInput(data)
 	if err != nil {
@@ -161,4 +228,50 @@ func marshalInput(data interface{}) ([]byte, error) {
 	inputMap := make(map[string]interface{})
 	inputMap["input"] = data
 	return json.Marshal(inputMap)
+}
+
+func stringToBool(value string) bool {
+	if value == "true" {
+		return true
+	}
+	return false
+}
+
+func runCommand(name string, args ...string) (output []byte, err error) {
+	cmd := exec.Command(name, args...)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	stderrorCmd, err := ioutil.ReadAll(stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	stdoutCmd, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, err
+	}
+
+	if string(stderrorCmd) != "" {
+		return nil, fmt.Errorf(string(stderrorCmd))
+	}
+
+	return stdoutCmd, nil
 }

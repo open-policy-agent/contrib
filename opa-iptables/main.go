@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	OpaEndpoint := flag.String("opa-endpoint", "http://127.0.0.1:8181", "endpoint of opa in form of ip:port i.e. 192.33.0.1:8181")
+	OpaEndpoint := flag.String("opa-endpoint", "http://127.0.0.1:8181", "endpoint of opa in form of http://ip:port i.e. http://192.33.0.1:8181")
 	ControllerAddr := flag.String("controller-host", "0.0.0.0", "controller host")
 	// setting default port value to some high port to prevent accidentally block this port in IPTable rules
 	ControllerPort := flag.String("controller-port", "33455", "controller port on which it listen on")
