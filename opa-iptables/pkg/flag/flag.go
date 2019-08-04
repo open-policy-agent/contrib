@@ -239,7 +239,10 @@ func (fs *FlagSet) parseOne() (bool, error) {
 
 // Parse parses arguments list
 func (fs *FlagSet) Parse(arguments []string) error {
-	return fs.parse(arguments[1:])
+	if len(arguments) > 1 {
+		return fs.parse(arguments[1:])
+	}
+	return nil
 }
 
 // IPTableflagSet represents all possible iptables flag that we support currently.
@@ -260,6 +263,7 @@ type IPTableflagSet struct {
 	ToPortFlag       string
 	CTStateFlag      string
 	Comment          string
+	LogPrefixFlag    string
 
 	TCPFlag TCPFlags
 }
@@ -289,5 +293,6 @@ func (fs *FlagSet) InitFlagSet(tf *IPTableflagSet) {
 	fs.AddStringFlag(&tf.ToPortFlag, "to-ports", "", 1)
 	fs.AddStringFlag(&tf.CTStateFlag, "ctstate", "", 1)
 	fs.AddStringFlag(&tf.Comment, "comment", "", 1)
+	fs.AddStringFlag(&tf.LogPrefixFlag, "log-prefix", "", 1)
 	fs.AddFlag(&tf.TCPFlag, "tcp-flags", 2)
 }

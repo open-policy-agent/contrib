@@ -43,6 +43,9 @@ push:
 clean:
 	rm -f $(BIN) -y
 
+go-build:
+	$(GO) build -o $(BIN) -ldflags $(LDFLAGS)
+
 .PHONY: test
 test: go-test
 

@@ -123,6 +123,8 @@ type Rule struct {
 	// i.e. if one extension yields false, evaluation will stop.
 	Match []string `json:"match,omitempty"`
 
+	LogPrefix string `json:"log_prefix,omitempty"`
+
 	// This specifies a comment that will be added to the rule.
 	Comment string `json:"comment,omitempty"`
 }
@@ -247,6 +249,7 @@ func (r *Rule) Construct() []string {
 	rs.addParam(r.ToSource, "--to-source")
 	rs.addParam(r.ToDestination, "--to-destination")
 	rs.addParam(r.ToPorts, "--to-ports")
+	rs.addParam(r.LogPrefix, "--log-prefix")
 	rs.addComment(r.Match, r.Comment)
 	return rs.spec
 }
