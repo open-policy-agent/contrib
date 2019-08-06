@@ -26,10 +26,17 @@ func (err *Error) Error() string {
 
 type Client interface {
 	Query
+	Data
 }
 
 type Query interface {
 	DoQuery(path string, input interface{}) (data []byte, err error)
+}
+
+type Data interface {
+	PutData(path string, data []byte) error
+	GetData(path string) ([]byte,error)
+	DeleteData(path string) error
 }
 
 type opaClient struct {
@@ -56,6 +63,33 @@ func (c *opaClient) DoQuery(path string, input interface{}) (data []byte, err er
 		return nil, err
 	}
 	return res, nil
+}
+
+func (c *opaClient) PutData(path string, data []byte) error {
+	url := c.opaEndpoint + fmt.Sprintf(documentEndpointFmt, path)
+	_,err := c.do(http.MethodPut, url, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *opaClient) GetData(path string) ([]byte,error) {
+	url := c.opaEndpoint + fmt.Sprintf(documentEndpointFmt, path)
+	res,err := c.do(http.MethodGet, url, nil)
+	if err != nil {
+		return nil,err
+	}
+	return res, nil
+}
+
+func (c *opaClient) DeleteData(path string) error {
+	url := c.opaEndpoint + fmt.Sprintf(documentEndpointFmt, path)
+	_, err := c.do(http.MethodDelete, url, nil)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *opaClient) do(method, url string, data []byte) ([]byte, error) {

@@ -140,10 +140,6 @@ type ruleSpec struct {
 	spec []string
 }
 
-type RuleSet struct {
-	Rules []Rule `json:"result"`
-}
-
 func (rs *ruleSpec) addParam(param string, flag string) {
 	if param != "" {
 		if param[0] == '!' {
@@ -260,16 +256,20 @@ func (r Rule) String() string {
 	return strings.Join(spec, " ")
 }
 
-func UnmarshalRules(rules []byte) (RuleSet, error) {
-	var rs RuleSet
-	err := json.Unmarshal(rules, &rs)
+func MarshalRules(rules []Rule) ([]byte,error) {
+	return json.Marshal(rules)
+}
+
+func UnmarshalRules(data []byte) ([]Rule,error) {
+	type result struct {
+		Rules []Rule `json:"result"`
+	}
+	var rules result
+	err := json.Unmarshal(data,&rules)
 	if err != nil {
-		return RuleSet{}, err
+		return nil,err
 	}
-	for i := range rs.Rules {
-		rs.Rules[i].init()
-	}
-	return rs, nil
+	return rules.Rules, nil
 }
 
 func (r *Rule) AddRule() error {

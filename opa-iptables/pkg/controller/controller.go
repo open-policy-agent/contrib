@@ -11,25 +11,22 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/logging"
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/opa"
-	"github.com/sirupsen/logrus"
 )
 
-type Controller struct {
-	ListenAddr string
-	logger     *logrus.Logger
-	opaClient  opa.Client
-}
-
-func New(opaEndpoint, hostAddr, hostPort string) *Controller {
+func NewController(opaEndpoint, hostAddr, hostPort string, watcherInterval time.Duration) *Controller {
 	return &Controller{
-		logger:     logging.GetLogger(),
-		ListenAddr: hostAddr + ":" + hostPort,
-		opaClient:  opa.New(opaEndpoint, ""),
+		logger:          logging.GetLogger(),
+		listenAddr:      hostAddr + ":" + hostPort,
+		opaClient:       opa.New(opaEndpoint, ""),
+		w: &watcher{
+			watcherInterval: watcherInterval,
+			watcherState: make(map[string]*state),
+		},
 	}
 }
 
 func (c *Controller) Run() {
-	c.logger.Infof("Controller is running on %s", c.ListenAddr)
+	c.logger.Infof("Controller is running on %s", c.listenAddr)
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
@@ -42,7 +39,7 @@ func (c *Controller) Run() {
 	r.HandleFunc("/v1/iptables/list/all", c.listAllRulesHandler()).Methods("GET")
 
 	server := http.Server{
-		Addr:         c.ListenAddr,
+		Addr:         c.listenAddr,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		Handler:      r,
@@ -54,6 +51,8 @@ func (c *Controller) Run() {
 			c.logger.Fatal(err)
 		}
 	}()
+
+	go c.watch()
 
 	<-signalCh
 	c.logger.Info("Received SIGINT SIGNAL")
