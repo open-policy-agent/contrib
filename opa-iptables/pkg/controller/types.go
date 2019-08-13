@@ -49,6 +49,7 @@ type request struct {
 // watcher checks any changes to watcherState at every "watcherInterval" time duration.
 type watcher struct {
 	watcherInterval time.Duration
+	done chan struct{}
 
 	mu           sync.RWMutex // guard the following fields
 	watcherState map[string]*state

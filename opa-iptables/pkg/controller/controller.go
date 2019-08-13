@@ -21,6 +21,7 @@ func NewController(opaEndpoint, hostAddr, hostPort string, watcherInterval time.
 		w: &watcher{
 			watcherInterval: watcherInterval,
 			watcherState: make(map[string]*state),
+			done: make(chan struct{},1),
 		},
 	}
 }
@@ -56,12 +57,25 @@ func (c *Controller) Run() {
 
 	<-signalCh
 	c.logger.Info("Received SIGINT SIGNAL")
-	c.logger.Info("Shutting down server")
+
+	c.logger.Info("Shutting down watcher")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	
+	err := c.shutdownWatcher(ctx)
+	if err != nil {
+		c.logger.Error(err)
+	}else {
+		c.logger.Info("watcher shutdown Successfully")
+	}
 
-	err := server.Shutdown(ctx)
+	c.logger.Info("Shutting down server")
+
+	ctx, cancel1 := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel1()
+
+	err = server.Shutdown(ctx)
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			c.logger.Info("Shutdown Timeout")
