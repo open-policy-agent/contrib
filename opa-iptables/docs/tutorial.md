@@ -211,7 +211,7 @@ webserver_rules[result] {
     set := ruleset[_]
     set.metadata.type == input.type
     set.metadata.owner == input.owner
-    result := set.rules[_]
+    result := set
 }
 EOF
 ```

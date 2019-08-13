@@ -1,24 +1,37 @@
 package controller
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/iptables"
 )
 
-func (w *watcher) addStateToWatcher(s *state) {
+func (w *watcher) addState(s *state) {
 	w.mu.Lock()
 	w.watcherState[s.queryPath] = s
 	w.mu.Unlock()
 }
 
-func (w *watcher) removeStateFromWatcher(queryPath string) {
+func (w *watcher) removeState(queryPath string) {
 	w.mu.Lock()
 	_, ok := w.watcherState[queryPath]
 	if ok {
 		delete(w.watcherState, queryPath)
 	}
 	w.mu.Unlock()
+}
+
+func (w *watcher) getState(key string) (state, error) {
+	w.mu.RLock()
+	s, ok := w.watcherState[key]
+	if !ok {
+		w.mu.RUnlock()
+		return state{}, fmt.Errorf("no state found of key %v", key)
+	}
+	w.mu.RUnlock()
+	return *s, nil
 }
 
 func (w *watcher) watcher(watchCh chan<- string) {
@@ -41,11 +54,29 @@ func (c *Controller) watch() {
 	for {
 		select {
 		case <-ticker.C:
+			c.logger.Debug("checking for any update")
 			go c.w.watcher(watcherCh)
+		case <-c.w.done:
+			close(watcherCh)
+			close(c.w.done)
+			return
 		}
 	}
 }
 
+func (c *Controller) shutdownWatcher(ctx context.Context) error {
+	c.w.done <- struct{}{}
+	for {
+		select {
+		case <-ctx.Done():
+			return context.DeadlineExceeded
+		case <-c.w.done:
+			return nil
+		}
+	}
+}
+
+// worker runs in it's own goroutine.
 func (c *Controller) worker(id int, watchCh <-chan string) {
 	c.logger.Infof("Worker %v started", id)
 
@@ -96,10 +127,11 @@ func (c *Controller) worker(id int, watchCh <-chan string) {
 					payload:   s.payload,
 					queryPath: s.queryPath,
 				}
-				c.w.addStateToWatcher(&newState)
+				c.w.addState(&newState)
 			}
 		}
 	}
+	c.logger.Debugf("worker %v stopped", id)
 }
 
 func replaceRules(old, new []iptables.Rule) error {

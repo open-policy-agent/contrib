@@ -124,7 +124,7 @@ func (c *Controller) insertRuleHandler() http.HandlerFunc {
 				return
 			}
 			
-			c.w.addStateToWatcher(&s)
+			c.w.addState(&s)
 		}
 	}
 }
@@ -167,8 +167,18 @@ func (c *Controller) deleteRuleHandler() http.HandlerFunc {
 				fmt.Fprintf(w, "%s. Checkout log for more details", err)
 				return
 			}
+			s, err := c.w.getState(request.queryPath)
+			if err != nil {
+				c.logger.Error(err)
+				return
+			}
 
-			c.w.removeStateFromWatcher(request.queryPath)
+			err = c.deleteOldRulesFromOPA(s.id)
+			if err != nil {
+				c.logger.Error(err)
+				return
+			}
+			c.w.removeState(s.queryPath)
 
 		} else {
 			c.logger.Error("Query didn't returned any RuleSet")
