@@ -14,7 +14,7 @@ LDFLAGS := "-X github.com/open-policy-agent/contrib/opa-iptables/pkg/version.Ver
 GO111MODULE := on
 
 .PHONY: all
-all: test build clean
+all: test build push clean
 
 .PHONY: version
 version:
@@ -44,7 +44,7 @@ clean:
 	rm -f $(BIN) -y
 
 go-build:
-	$(GO) build -o $(BIN) -ldflags $(LDFLAGS)
+	GOOS=$(GOOS) $(GO) build -o $(BIN) -ldflags $(LDFLAGS)
 
 .PHONY: test
 test: go-test
