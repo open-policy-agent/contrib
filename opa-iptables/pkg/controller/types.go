@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"net/http"
 	"sync"
 	"time"
 
@@ -8,15 +9,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type Config struct {
+	OpaEndpoint     string
+	ControllerAddr  string
+	ControllerPort  string
+	WatcherInterval time.Duration
+	Experimental    bool
+	WorkerCount     int
+}
+
 // Controller is a struct which is used for storing server related data.
 // It contains logger for centralize logging, opaClient for accessing OPA REST API, and
-// watcher for watching any state changes in ruleset of registred state stored in 
+// watcher for watching any state changes in ruleset of registred state stored in
 // watcherstate map.
 type Controller struct {
-	listenAddr string
-	logger     *logrus.Logger
-	opaClient  opa.Client
-	w          *watcher
+	listenAddr         string
+	server             http.Server
+	logger             *logrus.Logger
+	opaClient          opa.Client
+	w                  *watcher
+	watcherWorkerCount int
+	experimental       bool
 }
 
 // state is used for storing nessecarry information for doing repeated query for checking
@@ -49,7 +62,8 @@ type request struct {
 // watcher checks any changes to watcherState at every "watcherInterval" time duration.
 type watcher struct {
 	watcherInterval time.Duration
-	done chan struct{}
+	watcherDoneCh   chan struct{}
+	logger          *logrus.Logger
 
 	mu           sync.RWMutex // guard the following fields
 	watcherState map[string]*state

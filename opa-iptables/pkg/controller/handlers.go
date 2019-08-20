@@ -67,8 +67,7 @@ func (c *Controller) jsonRuleHandler() http.HandlerFunc {
 //
 func (c *Controller) insertRuleHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		watchStr := r.FormValue("watch")
-		watch := stringToBool(watchStr)
+
 		ruleSets, request, err := c.handlePayload(r)
 		if err != nil {
 			c.logger.Error(err)
@@ -101,30 +100,35 @@ func (c *Controller) insertRuleHandler() http.HandlerFunc {
 			return
 		}
 
-		if len(ruleSets) > 1 && watch {
-			c.logger.Error("Unable to watch queryPath. Query returns multiple ruleSet")
-			return
-		}
-		if watch {
+		if c.experimental {
 
-			rs := ruleSets[0]
-			s := state{
-				id:        rs.Metadata.ID,
-				payload:   request.p,
-				queryPath: request.queryPath,
-			}
+			watch := stringToBool(r.FormValue("watch"))
 
-			if s.id == "" {
-				c.logger.Error("Unable to watch current queryPath. RuleSet cotains empty \"_id\" field.")
+			if len(ruleSets) > 1 && watch {
+				c.logger.Error("Unable to watch queryPath. Query returns multiple ruleSet")
 				return
 			}
+			if watch {
 
-			err := c.putNewRulesToOPA(s.id,rs.Rules)
-			if err != nil {
-				return
+				rs := ruleSets[0]
+				s := state{
+					id:        rs.Metadata.ID,
+					payload:   request.p,
+					queryPath: request.queryPath,
+				}
+
+				if s.id == "" {
+					c.logger.Error("Unable to watch current queryPath. RuleSet cotains empty \"_id\" field.")
+					return
+				}
+
+				err := c.putNewRulesToOPA(s.id,rs.Rules)
+				if err != nil {
+					return
+				}
+				
+				c.w.addState(&s)
 			}
-			
-			c.w.addState(&s)
 		}
 	}
 }
@@ -167,18 +171,21 @@ func (c *Controller) deleteRuleHandler() http.HandlerFunc {
 				fmt.Fprintf(w, "%s. Checkout log for more details", err)
 				return
 			}
-			s, err := c.w.getState(request.queryPath)
-			if err != nil {
-				c.logger.Error(err)
-				return
-			}
 
-			err = c.deleteOldRulesFromOPA(s.id)
-			if err != nil {
-				c.logger.Error(err)
-				return
+			if c.experimental {
+				s, err := c.w.getState(request.queryPath)
+				if err != nil {
+					c.logger.Error(err)
+					return
+				}
+	
+				err = c.deleteOldRulesFromOPA(s.id)
+				if err != nil {
+					c.logger.Error(err)
+					return
+				}
+				c.w.removeState(s.queryPath)
 			}
-			c.w.removeState(s.queryPath)
 
 		} else {
 			c.logger.Error("Query didn't returned any RuleSet")
@@ -214,8 +221,8 @@ func (c *Controller) listRulesHandler() http.HandlerFunc {
 func (c *Controller) listAllRulesHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c.logger.Infof("msg=\"Received Request\" req_method=%v req_path=%v\n", r.Method, r.URL)
-		verboseStr := r.FormValue("verbose")
-		verbose := stringToBool(verboseStr)
+		
+		verbose := stringToBool(r.FormValue("verbose"))
 		var iptableTableList = [...]string{"filter", "nat"}
 
 		if verbose {
