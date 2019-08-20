@@ -13,16 +13,19 @@ import (
 	"github.com/open-policy-agent/contrib/opa-iptables/pkg/opa"
 )
 
-func NewController(opaEndpoint, hostAddr, hostPort string, watcherInterval time.Duration) *Controller {
+func New(config Config) *Controller {
 	return &Controller{
-		logger:          logging.GetLogger(),
-		listenAddr:      hostAddr + ":" + hostPort,
-		opaClient:       opa.New(opaEndpoint, ""),
+		logger:     logging.GetLogger(),
+		listenAddr: config.ControllerAddr + ":" + config.ControllerPort,
+		opaClient:  opa.New(config.OpaEndpoint, ""),
 		w: &watcher{
-			watcherInterval: watcherInterval,
-			watcherState: make(map[string]*state),
-			done: make(chan struct{},1),
+			watcherInterval: config.WatcherInterval,
+			watcherState:    make(map[string]*state),
+			watcherDoneCh:   make(chan struct{}, 1),
+			logger:          logging.GetLogger(),
 		},
+		watcherWorkerCount: config.WorkerCount,
+		experimental:       config.Experimental,
 	}
 }
 
@@ -39,50 +42,68 @@ func (c *Controller) Run() {
 	r.HandleFunc("/v1/iptables/list/{table}/{chain}", c.listRulesHandler()).Methods("GET")
 	r.HandleFunc("/v1/iptables/list/all", c.listAllRulesHandler()).Methods("GET")
 
-	server := http.Server{
+	c.server = http.Server{
 		Addr:         c.listenAddr,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		Handler:      r,
 	}
 
-	go func() {
-		err := server.ListenAndServe()
-		if err != http.ErrServerClosed {
-			c.logger.Fatal(err)
-		}
-	}()
+	go c.startController()
 
-	go c.watch()
+	if c.experimental {
+		go c.startWatcher()
+	}
 
 	<-signalCh
 	c.logger.Info("Received SIGINT SIGNAL")
 
-	c.logger.Info("Shutting down watcher")
+	if c.experimental {
+		c.shutdownWatcher()
+	}
+
+	c.shutdownController()
+}
+
+func (c *Controller) startWatcher() {
+	c.newWatcher()
+}
+
+func (c *Controller) shutdownWatcher() {
+	c.logger.Info("shutting down watcher")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
-	err := c.shutdownWatcher(ctx)
+
+	err := c.stopWatcher(ctx)
 	if err != nil {
 		c.logger.Error(err)
-	}else {
-		c.logger.Info("watcher shutdown Successfully")
+	} else {
+		c.logger.Info("watcher shutdown successfully")
 	}
+}
 
-	c.logger.Info("Shutting down server")
+func (c *Controller) startController() {
+	err := c.server.ListenAndServe()
+	if err != http.ErrServerClosed {
+		c.logger.Fatal(err)
+	}
+}
+
+func (c *Controller) shutdownController() {
+	c.logger.Info("shutting down controller")
 
 	ctx, cancel1 := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel1()
 
-	err = server.Shutdown(ctx)
+	err := c.server.Shutdown(ctx)
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			c.logger.Info("Shutdown Timeout")
+			c.logger.Info("shutdown timeout")
 		} else {
-			c.logger.Infof("Error while shutting down server: %s", err)
+			c.logger.Infof("Error while shutting down controller: %s", err)
 		}
 	} else {
-		c.logger.Info("Server Shutdown Successfully")
+		c.logger.Info("controller shutdown successfully")
 	}
 }
