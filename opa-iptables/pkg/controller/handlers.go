@@ -100,7 +100,7 @@ func (c *Controller) insertRuleHandler() http.HandlerFunc {
 			return
 		}
 
-		if c.experimental {
+		if c.watcher {
 
 			watch := stringToBool(r.FormValue("watch"))
 
@@ -172,7 +172,7 @@ func (c *Controller) deleteRuleHandler() http.HandlerFunc {
 				return
 			}
 
-			if c.experimental {
+			if c.watcher {
 				s, err := c.w.getState(request.queryPath)
 				if err != nil {
 					c.logger.Error(err)

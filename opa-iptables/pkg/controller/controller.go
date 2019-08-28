@@ -25,7 +25,7 @@ func New(config Config) *Controller {
 			logger:          logging.GetLogger(),
 		},
 		watcherWorkerCount: config.WorkerCount,
-		experimental:       config.Experimental,
+		watcher:        config.WatcherFlag,
 	}
 }
 
@@ -51,14 +51,14 @@ func (c *Controller) Run() {
 
 	go c.startController()
 
-	if c.experimental {
+	if c.watcher {
 		go c.startWatcher()
 	}
 
 	<-signalCh
 	c.logger.Info("Received SIGINT SIGNAL")
 
-	if c.experimental {
+	if c.watcher {
 		c.shutdownWatcher()
 	}
 

@@ -14,7 +14,7 @@ type Config struct {
 	ControllerAddr  string
 	ControllerPort  string
 	WatcherInterval time.Duration
-	Experimental    bool
+	WatcherFlag     bool
 	WorkerCount     int
 }
 
@@ -29,7 +29,7 @@ type Controller struct {
 	opaClient          opa.Client
 	w                  *watcher
 	watcherWorkerCount int
-	experimental       bool
+	watcher            bool
 }
 
 // state is used for storing nessecarry information for doing repeated query for checking
