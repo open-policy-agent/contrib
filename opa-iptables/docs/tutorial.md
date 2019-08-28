@@ -45,7 +45,7 @@ services:
       - PORT=9090
   opa-iptables:
     container_name: opa-iptables
-    image: urvil38/opa-iptables:0.0.1-dev
+    image: urvil38/opa-iptables:0.0.2-dev
     cap_add:
       - NET_ADMIN
     network_mode: host
@@ -100,7 +100,7 @@ curl -X POST localhost:33455/v1/iptables/json -d \
 iptables -t FILTER -A INPUT -p tcp --dport 33455 -j ACCEPT -m comment --comment "always allow any traffic to our opa-iptables plugin"'
 ```
 
-You get following Response:
+You get the following Response:
 
 ```
 [{
@@ -116,7 +116,7 @@ You get following Response:
     "match": [
         "comment"
     ],
-    "comment": "drop all traffic to web servern"
+    "comment": "drop all traffic to web server"
 },
 {
     "table": "filter",
@@ -139,6 +139,27 @@ You get following Response:
 
 Once we have rules, now it's time to add some context to those rules which help to query it from OPA. After that, we are ready for adding it to OPA using OPA's REST API.
 
+In order to store and query iptables rules, we are using a particular structure to represents rules called **RuleSet**. RuleSet have the following structure:
+
+```
+{
+  "metadata": {
+    "_id": "...",
+    ...
+  },
+  "rules": [
+    {
+      ...
+    },
+    ...
+  ]
+}
+```
+
+- **`metadata`** field is used for adding context to the iptables rules and also helps to query those rules using the this fields. The user that creates the ruleset would set the **`_id`** field. If the user changes the rules for the exactly same metadata fields then **`_id`** field would have to be changed. This is just a string for uniquely identifying **RuleSet**. If a user wants to be fancy it could be a datetime or unique crypto number.
+
+- **`rules`** field is represented a list of JSON encoded IPTable rules.
+
 **ruleset.json**:
 
 ```
@@ -146,6 +167,7 @@ cat > ruleset.json <<EOF
 [
     {
         "metadata": {
+            "_id": "day123",
             "type":"security",
             "environment":"production",
             "owner":"bob"
@@ -195,9 +217,9 @@ curl -X PUT -H "Content-Type: application/json" --data-binary @ruleset.json \
   localhost:8181/v1/data/iptables/ruleset
 ```
 
-Once we had added data to OPA, it's time to write policy, which is when evaluated returns list of IPTable rules.
+Once we had added data to OPA, it's time to write policy, which is when evaluated returns list of `RuleSet`.
 
-**Note: Evaluated Policy must need to return a list of rules describes in JSON**
+> Note: This extension expects list of RuleSet during insertion and deletion of rules. Therefor your policy must need to returns **list of RuleSet**.
 
 **security-policy.rego**:
 
@@ -294,7 +316,7 @@ curl -X POST \
 }'
 ```
 
-2. After deleting rules you can check that rules are successfully deleted by making an request to web server and you will get your response as you expected.
+2. After deleting rules you can check that rules are successfully deleted by requesting the web server and you will get your response as you expected.
 
 **Using curl:**
 

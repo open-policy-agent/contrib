@@ -21,10 +21,10 @@ func main() {
 	controllerPort := flag.String("controller-port", "33455", "controller port on which it listen on")
 	logFormat := flag.String("log-format", "text", "set log format. i.e. text | json | json-pretty")
 	logLevel := flag.String("log-level", "info", "set log level. i.e. info | debug | error")
-	watcherInterval := flag.Duration("watch-interval", 1*time.Minute, "")
-	v := flag.Bool("v", false, "show version information")
+	watcherInterval := flag.Duration("watch-interval", 1*time.Minute, "time interval for watcher to check for any update in watcherState")
+	v := flag.Bool("v", false, "show version")
 	workerCount := flag.Int("worker", 3, "number of workers needed for watcher")
-	watcherFlag := flag.Bool("watcher", false, "use experimental features")
+	watcherFlag := flag.Bool("watcher", false, "use experimental watcher")
 
 	flag.Parse()
 

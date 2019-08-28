@@ -93,8 +93,8 @@ func (c *Controller) startController() {
 func (c *Controller) shutdownController() {
 	c.logger.Info("shutting down controller")
 
-	ctx, cancel1 := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel1()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	err := c.server.Shutdown(ctx)
 	if err != nil {
