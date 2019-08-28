@@ -32,23 +32,30 @@ opa-iptables contain a web server that runs on port `33455`. iptables is a Linux
 sudo ./opa-iptables -h
 
 Usage of ./opa-iptables:
- -controller-host string
-  controller host (default "0.0.0.0")
- -controller-port string
-  controller port on which it listen on (default "33455")
- -log-format string
-  set log format. i.e. text | json | json-pretty (default "text")
- -log-level string
-  set log level. i.e. info | debug | error (default "info")
- -opa-endpoint string
-  endpoint of opa in form of http://ip:port i.e. http://192.33.0.1:8181 (default "http://127.0.0.1:8181")
- -v  show version information
+  -controller-host string
+    	controller host (default "0.0.0.0")
+  -controller-port string
+    	controller port on which it listen on (default "33455")
+  -log-format string
+    	set log format. i.e. text | json | json-pretty (default "text")
+  -log-level string
+    	set log level. i.e. info | debug | error (default "info")
+  -opa-endpoint string
+    	endpoint of opa in form of http://ip:port i.e. http://192.33.0.1:8181 (default "http://127.0.0.1:8181")
+  -v	show version
+  -watch-interval duration
+    	time interval for watcher to check for any update in watcherState (default 1m0s)
+  -watcher
+    	use experimental watcher
+  -worker int
+    	number of workers needed for watcher (default 3)
+
 ```
 
 **Run As Docker Container:**
 
 ```
-docker run --rm --net host --cap-add=NET_ADMIN urvil38/opa-iptables:0.0.1-dev -log-level debug -opa-endpoint http://127.0.0.1:8181
+docker run --rm --net host --cap-add=NET_ADMIN urvil38/opa-iptables:0.0.2-dev -log-level debug -opa-endpoint http://127.0.0.1:8181
 ```
 
 ## API
@@ -72,6 +79,10 @@ The request body contains an object that specifies a value for [The input Docume
 #### Query Parameters
 
 - **q** - path to OPA policy's rule
+
+- **watch (experimental)** - If Parameter is `true`, Add queryPath to watcher for watching any updates to underlying RuleSet return by OPA query.
+
+> **`Note:`** If you want to use watcher functionality, then you have to provides `--watcher` flag while starting `opa-iptables` controller.
 
 #### Status Code
 
