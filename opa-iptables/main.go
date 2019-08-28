@@ -24,7 +24,7 @@ func main() {
 	watcherInterval := flag.Duration("watch-interval", 1*time.Minute, "")
 	v := flag.Bool("v", false, "show version information")
 	workerCount := flag.Int("worker", 3, "number of workers needed for watcher")
-	experimental := flag.Bool("experimental", false, "use experimental features")
+	watcherFlag := flag.Bool("watcher", false, "use experimental features")
 
 	flag.Parse()
 
@@ -61,7 +61,7 @@ func main() {
 		ControllerAddr:  *controllerAddr,
 		ControllerPort:  *controllerPort,
 		WatcherInterval: *watcherInterval,
-		Experimental:    *experimental,
+		WatcherFlag:     *watcherFlag,
 		WorkerCount:     *workerCount,
 	}
 
