@@ -18,9 +18,10 @@ $ cd opa-iptables
 $ make docker-build
 ```
 
-## Tutorial
+## Resources:
 
-- For more information on how to use this extension with OPA to manage iptables rules, checkout [this tutorial document](./docs/tutorial.md).
+- [Tutorial](./docs/tutorial.md)
+- [Slides](https://speakerdeck.com/urvil38/opa-iptables-extension-for-managing-iptables-using-policy)
 
 ## How To Run?
 
