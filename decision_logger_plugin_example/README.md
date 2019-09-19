@@ -6,7 +6,7 @@ logger for OPA.
 ## Build
 
 ```bash
-go build -buildmode=plugin -o=plugin.so main.go
+go build
 ```
 
 ## Run
@@ -24,7 +24,7 @@ plugins:
 Run OPA:
 
 ```bash
-opa --plugin-dir=. run --server --config-file=config.yaml
+./decision_logger_plugin_example run --server --config-file=config.yaml
 ```
 
 Exercise the custom decision logger:
@@ -33,12 +33,12 @@ Exercise the custom decision logger:
 curl localhost:8181/v1/data
 ```
 
-Example output:
+Example output. The 4th line is from the println logger. The other lines are standard OPA log messages.
 
 ```
-INFO[2019-01-09T15:58:10-08:00] First line of log stream.                     addrs="[:8181]" insecure_addr=
-INFO[2019-01-09T15:58:10-08:00] Starting decision log uploader.               plugin=decision_logs
-INFO[2019-01-09T15:58:22-08:00] Received request.                             client_addr="127.0.0.1:51812" req_id=1 req_method=GET req_params="map[]" req_path=/v1/data
-{map[id:d0dc7534-7b3f-42ee-8177-552d51a9504b] 09dd7698-f01a-4f75-891e-622db480ab0d  data 0xc0001da268 0xc0003c39b0 127.0.0.1:51812 2019-01-09 23:58:22.591477037 +0000 UTC}
-INFO[2019-01-09T15:58:22-08:00] Sent response.                                client_addr="127.0.0.1:51812" req_id=1 req_method=GET req_path=/v1/data resp_bytes=66 resp_duration=1.63197 resp_status=200
+{"addrs":[":8181"],"insecure_addr":"","level":"info","msg":"Initializing server.","time":"2019-09-19T11:49:16-04:00"}
+{"level":"info","msg":"Starting decision logger.","plugin":"decision_logs","time":"2019-09-19T11:49:16-04:00"}
+{"client_addr":"127.0.0.1:41150","level":"info","msg":"Received request.","req_id":1,"req_method":"GET","req_path":"/v1/data","time":"2019-09-19T11:49:21-04:00"}
+{map[id:280bcbde-9195-4142-a055-d9661d4805fc version:] ad492980-c1d2-415a-bb6a-71cba6111e59  map[] data  <nil> 0xc000331a10 [] <nil> 127.0.0.1:41150 2019-09-19 15:49:21.561760024 +0000 UTC map[timer_rego_input_parse_ns:1273 timer_rego_load_bundles_ns:635 timer_rego_load_files_ns:2173 timer_rego_module_parse_ns:659 timer_rego_query_compile_ns:123733 timer_rego_query_eval_ns:24995 timer_rego_query_parse_ns:724709 timer_server_handler_ns:931606]}
+{"client_addr":"127.0.0.1:41150","level":"info","msg":"Sent response.","req_id":1,"req_method":"GET","req_path":"/v1/data","resp_bytes":66,"resp_duration":1.780271,"resp_status":200,"time":"2019-09-19T11:49:21-04:00"}
 ```
