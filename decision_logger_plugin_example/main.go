@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/open-policy-agent/opa/cmd"
 	"github.com/open-policy-agent/opa/plugins"
 	"github.com/open-policy-agent/opa/plugins/logs"
 	"github.com/open-policy-agent/opa/runtime"
@@ -58,7 +59,12 @@ func (p *PrintlnLogger) Log(ctx context.Context, event logs.EventV1) error {
 	return nil
 }
 
-func Init() error {
+func main() {
+
 	runtime.RegisterPlugin("println_decision_logger", Factory{})
-	return nil
+
+	if err := cmd.RootCommand.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
