@@ -47,6 +47,30 @@ $ curl -H 'Authorization: kelly' \
     -X DELETE localhost:8080/cars/test-car
 ```
 
+## Running from Docker
+
+To run from Docker, simply specify the host and port of the OPA server through
+the passed in `OPA_URL` environment variable:
+
+```bash
+$ docker run -e OPA_URL='opa:8181' -p 8080:8080 openpolicyagent/demo-dart:latest
+```
+
+Note that by default the Docker image enables the Dart Observatory, which binds
+port 8181 within the container by default. If using `--net=host`, the default
+Observatory port needs to be shifted out of the way. This can be done by
+tweaking the `DART_VM_OPTIONS`, as so:
+
+```bash
+$ docker run -e DART_VM_OPTIONS='--enable-vm-service=8282' --net=host openpolicyagent/demo-dart:latest
+
+Starting Dart with additional options --enable-vm-service=8282
+Observatory listening on http://127.0.0.1:8282/4y7welzb8Fc=/
+Applying policy: ./policies/example.rego
+Example Service listening on 0.0.0.0:8080
+...
+```
+
 ## Features and bugs
 
 Please file feature requests and bugs at the [issue tracker][tracker].
