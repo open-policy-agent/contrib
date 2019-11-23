@@ -30,6 +30,7 @@ services:
       - "2222:22"
     volumes:
       - ./etc/frontend_host_id:/etc/host_identity.json
+      - ./etc/sshd_config:/etc/ssh/sshd_config
 
   backend:
     image: openpolicyagent/demo-pam
@@ -37,3 +38,4 @@ services:
       - "2223:22"
     volumes:
       - ./etc/backend_host_id:/etc/host_identity.json
+      - ./etc/sshd_config:/etc/ssh/sshd_config
