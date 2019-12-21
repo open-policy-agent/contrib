@@ -5,7 +5,7 @@ all: module
 
 module: http flag display authz log json pull sysinfo
 	gcc -fPIC -fno-stack-protector -c pam.c -o ${MODULE}.o
-	gcc -shared -lcurl -ljansson -Wl,-soname,${MODULE}.so -o ${MODULE}.so ${MODULE}.o $(foreach var,$?,$(var).o)
+	gcc -shared -Wl,-soname,${MODULE}.so -o ${MODULE}.so ${MODULE}.o $(foreach var,$?,$(var).o) -lcurl -ljansson -lpam
 
 	${CLEAN_OBJECTS}
 
