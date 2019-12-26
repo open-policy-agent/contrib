@@ -67,6 +67,9 @@ int http_request(const char * method, const char* endpoint, char *req_body, json
 	}
 
 	char url[2 * MAX_FLAG_SIZE];
+	if (strlen(flag_opa_sock) > 0) {
+		curl_easy_setopt(curl_handle, CURLOPT_UNIX_SOCKET_PATH, flag_opa_sock);
+	}
 	curl_easy_setopt(curl_handle, CURLOPT_URL, join_url(url, flag_opa_url, endpoint));
 	curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, method);
 	curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1);

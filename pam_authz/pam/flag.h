@@ -6,6 +6,7 @@
 // These variables are populated by initialize_flags() using arguments
 // that this PAM module is called with.
 extern char flag_opa_url[MAX_FLAG_SIZE];
+extern char flag_opa_sock[MAX_FLAG_SIZE];
 extern char flag_pull_endpoint[MAX_FLAG_SIZE];
 extern char flag_display_endpoint[MAX_FLAG_SIZE];
 extern char flag_authz_endpoint[MAX_FLAG_SIZE];

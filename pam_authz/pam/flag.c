@@ -4,10 +4,11 @@
 #include "flag.h"
 #include "log.h"
 
-#define FLAG_COUNT 5
+#define FLAG_COUNT 6
 
 // Valid flags that can be used as arguments to this PAM module inside /etc/pam.d/ files.
 static const char FLAG_STR_OPA_URL[]          = "url";
+static const char FLAG_STR_OPA_SOCK[]         = "sock";
 static const char FLAG_STR_PULL_ENDPOINT[]    = "pull_endpoint";
 static const char FLAG_STR_DISPLAY_ENDPOINT[] = "display_endpoint";
 static const char FLAG_STR_AUTHZ_ENDPOINT[]   = "authz_endpoint";
@@ -15,6 +16,7 @@ static const char FLAG_STR_LOG_LEVEL[]        = "log_level";
 
 // Default values of exposed variables.
 char flag_opa_url[MAX_FLAG_SIZE]          = "";
+char flag_opa_sock[MAX_FLAG_SIZE]         = "";
 char flag_pull_endpoint[MAX_FLAG_SIZE]    = ""; 
 char flag_display_endpoint[MAX_FLAG_SIZE] = "";
 char flag_authz_endpoint[MAX_FLAG_SIZE]   = "";
@@ -25,6 +27,7 @@ static const struct FlagStrToVar {
 	const char *var;
 } FLAG_STR_TO_VAR[FLAG_COUNT] = {
 	{FLAG_STR_OPA_URL,          flag_opa_url},
+	{FLAG_STR_OPA_SOCK,         flag_opa_sock},
 	{FLAG_STR_PULL_ENDPOINT,    flag_pull_endpoint},
 	{FLAG_STR_DISPLAY_ENDPOINT, flag_display_endpoint},
 	{FLAG_STR_AUTHZ_ENDPOINT,   flag_authz_endpoint},
