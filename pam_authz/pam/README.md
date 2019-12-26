@@ -74,6 +74,7 @@ The module accepts arguments of the format `<flag>=<value>`.
 |Property           |Required   |Description|
 |-------------------|-----------|-----------|
 |`url`              |yes        |The URL of an OPA instance API.
+|`sock`             |no         |The path to a unix socket OPA is listening on.
 |`display_endpoint` |no         |The path of the package containing policy that describes what to display or prompt the user.
 |`pull_endpoint`    |no         |The path of the package containing policy that describes the JSON files and environment variables that should be collected from the system.
 |`authz_endpoint`   |yes        |The path of the package containing the policy that takes all collected data as input and makes the final decision.
@@ -312,3 +313,7 @@ host requirements and verbose logs.
 ```bash
 ssh -p 2227 ops@<container-ip> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -vvv
 ```
+
+## Security
+
+OPA should be secured so that non privileged users can not contact OPA and change policy or use it to help break in. This module does not yet support any authentication but when used in conjunction with the -sock flag, security can be enforced with unix file permissions (chown root.root opa.sock and chmod 600 opa.sock). Start the OPA server with -a unix://<path>/opa.sock.
