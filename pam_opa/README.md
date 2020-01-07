@@ -19,7 +19,7 @@ To get started, make sure you have `docker` and `docker-compose` installed and t
 images using
 
 ```shell
-$ cd $THIS_REPO/pam_authz
+$ cd $THIS_REPO/pam_opa
 $ make && make up
 ```
 

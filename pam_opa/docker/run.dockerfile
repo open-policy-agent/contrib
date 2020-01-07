@@ -41,7 +41,7 @@ COPY /pam.d/* /etc/pam.d/
 
 # Replace the default sshd config with our config. These enables PAM in sshd
 COPY /sshd_config /etc/ssh/sshd_config
-COPY pam_authz.so /lib/security/pam_authz.so
+COPY pam_opa.so /lib/security/pam_opa.so
 
 # Delete the ssh key common to all users
 RUN rm -f /tmp/your_key.pub

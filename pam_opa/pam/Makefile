@@ -1,4 +1,4 @@
-MODULE := pam_authz
+MODULE := pam_opa
 CLEAN_OBJECTS := -rm -f *.o *.gch
 
 all: module

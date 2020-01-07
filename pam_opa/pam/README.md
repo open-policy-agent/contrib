@@ -47,7 +47,7 @@ system.
    for example add the following to `/etc/pam.d/sudo`:
 
 ```
-auth required /lib/security/pam_authz.so url=http://opa:8181 authz_endpoint=/v1/data/sshd/authz display_endpoint=/v1/data/display pull_endpoint=/v1/data/pull log_level=debug
+auth required /lib/security/pam_opa.so url=http://opa:8181 authz_endpoint=/v1/data/sshd/authz display_endpoint=/v1/data/display pull_endpoint=/v1/data/pull log_level=debug
 ```
 
 ## Configuration
@@ -66,7 +66,7 @@ module should ultimately lead to a the application being sent a failure response
 
 #### Module and arguments
 
-`lib/security/pam_authz.so` is the full path to the PAM module.
+`lib/security/pam_opa.so` is the full path to the PAM module.
 The module accepts arguments of the format `<flag>=<value>`.
 
 ###### Valid flags
