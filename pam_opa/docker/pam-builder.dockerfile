@@ -34,5 +34,5 @@ WORKDIR /pam
 RUN make clean && make
 
 CMD tar -cf - \
-        -C /pam pam_authz.so \
+        -C /pam pam_opa.so \
         -C / run.dockerfile id_rsa.pub pam.d sshd_config create_user.sh jansson_lib

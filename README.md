@@ -9,7 +9,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [HTTP API Authorization (Linkerd)](./linkerd_authz)
 - [HTTP API Authorization (Python)](./api_authz)
 - [HTTP API Authorization (Dart)](./dart_authz)
-- [SSH and sudo Authorization (PAM)](./pam_authz)
+- [SSH and sudo Authorization (PAM)](./pam_opa)
 - [Puppet Authorization](./puppet_example)
 - [Container Image Policy (Kubernetes and CoreOS Clair)](./image_enforcer)
 - [Data Filtering (SQL)](./data_filter_example)

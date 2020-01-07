@@ -2,7 +2,7 @@
 
 # Enable the Authz PAM module
 # At image build time, the value of HOST_UUID is replaced with the role of the image (for example, webapp)
-auth required /lib/security/pam_authz.so url=http://opa:8181 authz_endpoint=/v1/data/sshd/authz display_endpoint=/v1/data/display pull_endpoint=/v1/data/pull log_level=debug
+auth required /lib/security/pam_opa.so url=http://opa:8181 authz_endpoint=/v1/data/sshd/authz display_endpoint=/v1/data/display pull_endpoint=/v1/data/pull log_level=debug
 
 # SELinux needs to be the first session rule.  This ensures that any
 # lingering context has been cleared.  Without this it is possible that a
