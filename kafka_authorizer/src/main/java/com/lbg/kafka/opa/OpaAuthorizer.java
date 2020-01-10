@@ -21,6 +21,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -82,6 +83,10 @@ public class OpaAuthorizer implements Authorizer {
     }
   }
 
+  public String getValueOrDefault(String property, String defaultValue) {
+    return Optional.ofNullable((String) configs.get(property)).orElse(defaultValue);
+  }
+
   public boolean authorize(Session session, Operation operation, Resource resource) {
     try {
       return cache.get(new Msg.Input(operation, resource, session));
@@ -95,11 +100,11 @@ public class OpaAuthorizer implements Authorizer {
     if (log.isTraceEnabled()) {
       log.trace("CONFIGS: {}", this.configs);
     }
-    opaUrl = (String) configs.get(OPA_AUTHORIZER_URL_CONFIG);
-    allowOnError = Boolean.valueOf((String) configs.get(OPA_AUTHORIZER_DENY_ON_ERROR_CONFIG));
-    initialCapacity = Integer.parseInt((String) configs.get(OPA_AUTHORIZER_CACHE_INITIAL_CAPACITY_CONFIG));
-    maximumSize = Integer.parseInt((String) configs.get(OPA_AUTHORIZER_CACHE_MAXIMUM_SIZE_CONFIG));
-    expireAfterMs = Long.parseLong((String) configs.get(OPA_AUTHORIZER_CACHE_EXPIRE_AFTER_MS_CONFIG));
+    opaUrl = (String) getValueOrDefault(OPA_AUTHORIZER_URL_CONFIG, "http://localhost:8181");
+    allowOnError = Boolean.valueOf((String) getValueOrDefault(OPA_AUTHORIZER_DENY_ON_ERROR_CONFIG, "false"));
+    initialCapacity = Integer.parseInt((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_INITIAL_CAPACITY_CONFIG, "100"));
+    maximumSize = Integer.parseInt((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_MAXIMUM_SIZE_CONFIG, "100"));
+    expireAfterMs = Long.parseLong((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_EXPIRE_AFTER_MS_CONFIG, "600000"));
   }
 
   public void addAcls(scala.collection.immutable.Set<Acl> acls, Resource resource) {
