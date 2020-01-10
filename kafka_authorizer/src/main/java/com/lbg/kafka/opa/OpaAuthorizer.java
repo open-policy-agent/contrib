@@ -35,12 +35,14 @@ public class OpaAuthorizer implements Authorizer {
   private final static String OPA_AUTHORIZER_CACHE_INITIAL_CAPACITY_CONFIG = "opa.authorizer.cache.initial.capacity";
   private final static String OPA_AUTHORIZER_CACHE_MAXIMUM_SIZE_CONFIG = "opa.authorizer.cache.maximum.size";
   private final static String OPA_AUTHORIZER_CACHE_EXPIRE_AFTER_MS_CONFIG = "opa.authorizer.cache.expire.after.ms";
+  private final static String OPA_AUTHORIZER_TOKEN = "opa.authorizer.token";
 
   private String opaUrl;
   private boolean allowOnError;
   private int initialCapacity;
   private int maximumSize;
   private long expireAfterMs;
+  private String opaToken;
 
   private final Gson gson = new Gson();
 
@@ -66,6 +68,9 @@ public class OpaAuthorizer implements Authorizer {
       conn.setDoOutput(true);
       conn.setRequestMethod("POST");
       conn.setRequestProperty("Content-Type", "application/json");
+      if (!opaToken.isEmpty()) {
+        conn.setRequestProperty("Authorization", "Bearer " + opaToken);
+      }
 
       String data = gson.toJson(new Msg(input));
       OutputStream os = conn.getOutputStream();
@@ -105,6 +110,7 @@ public class OpaAuthorizer implements Authorizer {
     initialCapacity = Integer.parseInt((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_INITIAL_CAPACITY_CONFIG, "100"));
     maximumSize = Integer.parseInt((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_MAXIMUM_SIZE_CONFIG, "100"));
     expireAfterMs = Long.parseLong((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_EXPIRE_AFTER_MS_CONFIG, "600000"));
+    opaToken = (String) getValueOrDefault(OPA_AUTHORIZER_TOKEN, "");
   }
 
   public void addAcls(scala.collection.immutable.Set<Acl> acls, Resource resource) {
