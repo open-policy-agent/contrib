@@ -1,0 +1,8 @@
+*.crt
+*.key
+*.csr
+*.conf
+*.srl
+webhook-configuration.yaml
+# This contains the auth token so don't commit. 
+authz.rego 

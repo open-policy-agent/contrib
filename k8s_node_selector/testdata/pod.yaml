@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: test
+  name: testpod
+spec:
+  containers:
+  - image: busybox
+    imagePullPolicy: Always
+    name: test
+    command: ["sleep", "10"]
