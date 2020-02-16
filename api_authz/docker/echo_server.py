@@ -33,10 +33,10 @@ def check_auth(url, user, method, url_as_array, token):
     except Exception as err:
         logging.info(err)
         return {}
+    j = rsp.json()
     if rsp.status_code >= 300:
         logging.info("Error checking auth, got status %s and message: %s" % (j.status_code, j.text))
         return {}
-    j = rsp.json()
     logging.info("Auth response:")
     logging.info(json.dumps(j, indent=2))
     return j
