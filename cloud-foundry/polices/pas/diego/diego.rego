@@ -10,9 +10,4 @@ find_vm_type(dataObj, service) = vmType {
         "present": count(find_VMType) > 0
     }
 }
-# deny_if_memory_over_allocated[msg] {
-#     false == true
-
-#     msg = sprintf("%v", [vmType])
-# }
 
