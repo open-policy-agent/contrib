@@ -1,8 +1,10 @@
 # opa-policy
-[OPA](https://www.openpolicyagent.org/) bundles of Policies to be used with [conftest](https://github.com/instrumenta/conftest) for fitness function testing your platform
+This directory provides configuration policies and validators for you Cloud Foundry Deployments. \
+With the use of [OPA](https://www.openpolicyagent.org/), bundles of policies to be used with [conftest](https://github.com/instrumenta/conftest) for fitness function testing your platform.
+
+**OPA** provides the policy rules as well as policy language `rego`. **Conftest** provides developers with local tooling to do static analysis of configuration files so that engineers can shift left on testing infrastructure as code.
 
 Why you should care? Being able to test baseline values before attempting to deploy allows operators to *fail fast*. 
-
 These policies along with these tools are used to help bridge that gap.
 
 # Using this Repository
@@ -15,8 +17,25 @@ This are intended to be example tests that can continue to be contributed to. Th
 
 The main point of this repo is to run [conftest](https://github.com/instrumenta/conftest) against the OPA policies contained within. Something like this
 
+Let's make a yaml file as dummy configuration file for the Pivotal Application Service or a Cloud Foundry Application Runtime. In the root of this directory
+
 ```sh
-$ conftest test cf.yml
+$ cat > /tmp/pas.yml <<-EOF
+---
+product-properties:
+  ".properties.credhub_hsm_provider_partition_password":
+    value:
+    - primary: false
+  ".properties.credhub_key_encryption_passwords":
+    value:
+    - primary: '1234567890123456789'
+EOF
+```
+
+A few notes for below. `-p` indicates the policy being run. Any arguments without flags preceding are treated as the files being evaluated. In this case `/tmp/pas.yml` is being evaluated.
+
+```sh
+$ conftest test -p policies/pas/credhub-key/ /tmp/pas.yml
 ```
 
 Check out the OPA and conftest communities for information on running them. This grouping of policies is intended to be a starting point for cloud foundry users.
