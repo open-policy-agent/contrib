@@ -15,9 +15,9 @@ This are intended to be example tests that can continue to be contributed to. Th
 
 ## Testing Configuration and Validation
 
-The main point of this repo is to run [conftest](https://github.com/instrumenta/conftest) against the OPA policies contained within. Something like this
+The main point of this repo is to run [conftest](https://github.com/instrumenta/conftest) against the OPA policies contained within. 
 
-Let's make a yaml file as dummy configuration file for the Pivotal Application Service or a Cloud Foundry Application Runtime. In the root of this directory
+For example, suppose you're a developer writing a configuration file for the Pivotal Application Service or a Cloud Foundry Application Runtime. In the root of this directory do the following.
 
 ```sh
 $ cat > /tmp/pas.yml <<-EOF
@@ -32,10 +32,14 @@ product-properties:
 EOF
 ```
 
+Let's suppose you want to do a sanity check on whether you've made a mistake in your YAML file. You can use conftest to run OPA policies that check your YAML files for obvious mistakes.
+
 A few notes for below. `-p` indicates the policy being run. Any arguments without flags preceding are treated as the files being evaluated. In this case `/tmp/pas.yml` is being evaluated.
 
 ```sh
-$ conftest test -p policies/pas/credhub-key/ /tmp/pas.yml
+-> % conftest test --namespace credhub -p cloud-foundry/polices/pas/credhub-key/credhub_key.rego /tmp/pas.yml
+PASS - /tmp/pas.yml - data.credhub.deny_if_not_exactly_one_primary
+PASS - /tmp/pas.yml - data.credhub.deny_not_enough_chars
 ```
 
 Check out the OPA and conftest communities for information on running them. This grouping of policies is intended to be a starting point for cloud foundry users.

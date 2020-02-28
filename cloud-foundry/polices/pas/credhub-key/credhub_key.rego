@@ -5,10 +5,10 @@ deny_if_not_exactly_one_primary[msg] {
                 key := input["product-properties"][".properties.credhub_key_encryption_passwords"].value[i].primary
         ]
 
-        keys != [true]
+        count(keys) < 1
+        count(keys) > 1
         msg = sprintf("Must have exactly one primary encryption key for credhub, found %d", [count(keys)])
 }
-
 deny_not_enough_chars[msg] {
     some i
     input["product-properties"][".properties.credhub_key_encryption_passwords"].value[i].primary
