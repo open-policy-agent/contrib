@@ -1,0 +1,13 @@
+return {
+  _all = {
+    coverage = true
+  },
+  default = {
+    verbose = true
+  },
+  opaUnit = {
+    tags = "opa",
+    ROOT = {"spec/kong/plugins/opa"},
+    verbose = true
+  }
+}

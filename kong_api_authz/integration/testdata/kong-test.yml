@@ -1,0 +1,18 @@
+_format_version: "1.1"
+
+services:
+    - name: opa-example-service
+      url: http://httpbin/
+      plugins:
+        - name: opa
+          config:
+            server:
+                host: opa
+            policy:
+                decision: httpapi/authz/allow
+      routes:
+        - name: opa-example-route
+          hosts:
+            - opa.example.com
+          paths:
+            - /
