@@ -1,0 +1,36 @@
+version: '3.7'
+
+services:
+  sut:
+    image: postman/newman:ubuntu
+    volumes:
+      # Import postman collection, environment and `wait-for-` script
+      - ./testdata/postman:/etc/newman:ro
+    entrypoint: ["/etc/newman/wait-for-services.sh", "kong:8001", "opa:8181", "httpbin:80"]
+    command: ["run", "kong-plugin-opa.integration_tests.postman_collection.json", "-e", "docker.postman_environment.json"]
+    depends_on: # will start only services required for integration tests
+      - kong
+      - opa
+      - httpbin
+
+  kong:
+    volumes:
+      # Import declarative configuration
+      - ./testdata/kong-test.yml:/usr/local/kong/declarative/kong.yml:ro
+    environment:
+      # Switch to DB-less mode for integration tests
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+
+  opa:
+    working_dir: /bundle
+    volumes:
+      # Load policies for tests 
+      - ./testdata/opa/bundle:/bundle:ro
+    command: "run --server --bundle . --log-level debug --log-format text"
+  
+  # Mock upstream service
+  httpbin:
+    image: kennethreitz/httpbin
+    ports:
+      - "80:80"

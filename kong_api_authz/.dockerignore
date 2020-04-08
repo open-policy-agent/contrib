@@ -1,0 +1,7 @@
+# Lua
+/.luarocks
+*/lua*
+
+# Tests
+/integration-tests
+/spec

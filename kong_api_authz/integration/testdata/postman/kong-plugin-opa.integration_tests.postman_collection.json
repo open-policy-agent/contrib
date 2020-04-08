@@ -1,0 +1,357 @@
+{
+	"info": {
+		"_postman_id": "73199a0d-207c-49f6-a940-287e31edd3de",
+		"name": "kong-plugin-opa.integration_tests",
+		"description": "Collection of integration tests for the kong-plugins-opa.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Test No Auth",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c521e4b5-b2ca-43f9-a358-43c0b5e59d7d",
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {\r",
+							"    pm.response.to.have.status(403);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "c3bd7e6d-ecb7-4714-bdd5-42dc89289925",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Host",
+						"type": "text",
+						"value": "{{route_host}}"
+					}
+				],
+				"url": {
+					"raw": "http://{{kong_host}}:{{kong_port}}/status/200",
+					"protocol": "http",
+					"host": [
+						"{{kong_host}}"
+					],
+					"port": "{{kong_port}}",
+					"path": [
+						"status",
+						"200"
+					]
+				},
+				"description": "Test the plugin with a request that has no authorization header"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Basic Auth",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c521e4b5-b2ca-43f9-a358-43c0b5e59d7d",
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {\r",
+							"    pm.response.to.have.status(403);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "c3bd7e6d-ecb7-4714-bdd5-42dc89289925",
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "password",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "username",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Host",
+						"type": "text",
+						"value": "{{route_host}}"
+					}
+				],
+				"url": {
+					"raw": "http://{{kong_host}}:{{kong_port}}/status/200",
+					"protocol": "http",
+					"host": [
+						"{{kong_host}}"
+					],
+					"port": "{{kong_port}}",
+					"path": [
+						"status",
+						"200"
+					]
+				},
+				"description": "Test the plugin with a basic authentication"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Bearer Token with Allowed Role",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "c521e4b5-b2ca-43f9-a358-43c0b5e59d7d",
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "c3bd7e6d-ecb7-4714-bdd5-42dc89289925",
+						"exec": [
+							"// Base 63 URL encoding ",
+							"// from https://www.jonathan-petitcolas.com/2014/11/27/creating-json-web-token-in-javascript.html",
+							"function base64url(source) {",
+							"",
+							"  // Encode in classical base64",
+							"  var encodedSource = CryptoJS.enc.Base64.stringify(source);",
+							"",
+							"  // Remove padding equal characters",
+							"  encodedSource = encodedSource.replace(/=+$/, '');",
+							"",
+							"  // Replace characters according to base64url specifications",
+							"  encodedSource = encodedSource.replace(/\\+/g, '-');",
+							"  encodedSource = encodedSource.replace(/\\//g, '_');",
+							"",
+							"  return encodedSource;",
+							"}",
+							"",
+							"// set algorithm & token type",
+							"var header = {",
+							"    \"alg\": \"HS256\",",
+							"    \"typ\": \"JWT\"",
+							"};",
+							"",
+							"// set data",
+							"var payload = {",
+							"  \"sub\": \"1234567890\",",
+							"  \"name\": \"John Doe\",",
+							"  \"iat\": Math.floor(Date.now() / 1000), // issued now",
+							"  \"role\": pm.environment.get(\"allowed_role\")  // valid role to access status endpoint",
+							"}",
+							"",
+							"// encode header and payload",
+							"var encodedHeader = base64url(CryptoJS.enc.Utf8.parse(JSON.stringify(header)))",
+							"var encodedPayload = base64url(CryptoJS.enc.Utf8.parse(JSON.stringify(payload)))",
+							"",
+							"// create token",
+							"var token = encodedHeader + '.' + encodedPayload ",
+							"",
+							"// generate verify signature",
+							"var signature = base64url(CryptoJS.HmacSHA256(token, 'secret'))",
+							"",
+							"pm.variables.set('token', token + \".\" + signature)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Host",
+						"value": "{{route_host}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://{{kong_host}}:{{kong_port}}/status/200",
+					"protocol": "http",
+					"host": [
+						"{{kong_host}}"
+					],
+					"port": "{{kong_port}}",
+					"path": [
+						"status",
+						"200"
+					]
+				},
+				"description": "Test the plugin with a Token that has a role allowed to access the service"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Bearer Token with Forbidden Role",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "a4a4a5ff-dc29-48e3-a392-1cd5c8e3b254",
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {\r",
+							"    pm.response.to.have.status(403);\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "2b9db012-dc62-44ee-9a18-4c6fd2e54b66",
+						"exec": [
+							"// Base 63 URL encoding ",
+							"// from https://www.jonathan-petitcolas.com/2014/11/27/creating-json-web-token-in-javascript.html",
+							"function base64url(source) {",
+							"",
+							"  // Encode in classical base64",
+							"  var encodedSource = CryptoJS.enc.Base64.stringify(source);",
+							"",
+							"  // Remove padding equal characters",
+							"  encodedSource = encodedSource.replace(/=+$/, '');",
+							"",
+							"  // Replace characters according to base64url specifications",
+							"  encodedSource = encodedSource.replace(/\\+/g, '-');",
+							"  encodedSource = encodedSource.replace(/\\//g, '_');",
+							"",
+							"  return encodedSource;",
+							"}",
+							"",
+							"// set algorithm & token type",
+							"var header = {",
+							"    \"alg\": \"HS256\",",
+							"    \"typ\": \"JWT\"",
+							"};",
+							"",
+							"// set data",
+							"var payload = {",
+							"  \"sub\": \"1234567890\",",
+							"  \"name\": \"John Doe\",",
+							"  \"iat\": Math.floor(Date.now() / 1000), // issued now",
+							"  \"role\": pm.environment.get(\"forbidden_role\") // role that does not have access to status endpoint",
+							"}",
+							"",
+							"// encode header and payload",
+							"var encodedHeader = base64url(CryptoJS.enc.Utf8.parse(JSON.stringify(header)))",
+							"var encodedPayload = base64url(CryptoJS.enc.Utf8.parse(JSON.stringify(payload)))",
+							"",
+							"// create token",
+							"var token = encodedHeader + '.' + encodedPayload ",
+							"",
+							"// generate verify signature",
+							"var signature = base64url(CryptoJS.HmacSHA256(token, 'secret'))",
+							"",
+							"pm.variables.set('token', token + \".\" + signature)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Host",
+						"value": "{{route_host}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://{{kong_host}}:{{kong_port}}/status/200",
+					"protocol": "http",
+					"host": [
+						"{{kong_host}}"
+					],
+					"port": "{{kong_port}}",
+					"path": [
+						"status",
+						"200"
+					]
+				},
+				"description": "Test the plugin with a Token that has a role not allowed to access the service"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "82ac6756-c2d9-44e2-9b69-8124ecb14a98",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "3a3fbb08-62e2-4843-924c-20c7cbe6c995",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"protocolProfileBehavior": {}
+}
