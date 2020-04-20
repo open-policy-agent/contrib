@@ -48,18 +48,26 @@ public class OpaAuthorizer implements Authorizer {
 
   private final Map<String, Object> configs = new HashMap<>();
 
-  private LoadingCache<Msg.Input, Boolean> cache = CacheBuilder.newBuilder()
-    .initialCapacity(initialCapacity)
-    .maximumSize(maximumSize)
-    .expireAfterWrite(expireAfterMs, TimeUnit.MILLISECONDS)
-    .build(
-      new CacheLoader<Msg.Input, Boolean>() {
-        @Override
-        public Boolean load(Msg.Input input) {
-          return allow(input);
+  private LoadingCache<Msg.Input, Boolean> cache;
+
+  public OpaAuthorizer() {
+    configure(new HashMap<>());
+  }
+
+  private LoadingCache<Msg.Input, Boolean> buildCache() {
+    return CacheBuilder.newBuilder()
+      .initialCapacity(initialCapacity)
+      .maximumSize(maximumSize)
+      .expireAfterWrite(expireAfterMs, TimeUnit.MILLISECONDS)
+      .build(
+        new CacheLoader<Msg.Input, Boolean>() {
+          @Override
+          public Boolean load(Msg.Input input) {
+            return allow(input);
+          }
         }
-      }
-    );
+      );
+  }
 
   private boolean allow(Msg.Input input) {
     try {
@@ -101,7 +109,9 @@ public class OpaAuthorizer implements Authorizer {
   }
 
   public void configure(Map<String, ?> configs) {
+    this.configs.clear();
     this.configs.putAll(configs);
+
     if (log.isTraceEnabled()) {
       log.trace("CONFIGS: {}", this.configs);
     }
@@ -111,6 +121,8 @@ public class OpaAuthorizer implements Authorizer {
     maximumSize = Integer.parseInt((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_MAXIMUM_SIZE_CONFIG, "100"));
     expireAfterMs = Long.parseLong((String) getValueOrDefault(OPA_AUTHORIZER_CACHE_EXPIRE_AFTER_MS_CONFIG, "600000"));
     opaToken = (String) getValueOrDefault(OPA_AUTHORIZER_TOKEN, "");
+
+    cache = buildCache();
   }
 
   public void addAcls(scala.collection.immutable.Set<Acl> acls, Resource resource) {
