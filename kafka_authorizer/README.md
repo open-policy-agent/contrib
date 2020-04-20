@@ -35,6 +35,7 @@ The plugin supports the following properties:
 | `opa.authorizer.cache.initial.capacity` | `100` | Initial decision cache size. |
 | `opa.authorizer.cache.maximum.size` | `100` | Max decision cache size. |
 | `opa.authorizer.cache.expire.after.ms` | `600000` | Decision cache expiry in milliseconds. |
+| `opa.authorizer.token` | `` | Token for authentication with OPA. |
 
 ## Usage
 
