@@ -13,7 +13,7 @@ Build the example by running `make build`
 
 ## Running the example
 
-1. Run Elasticsearch. See Elasticsearch's [Installation](https://www.elastic.co/guide/en/elasticsearch/reference/current/_installation.html) to get started.
+1. Run Elasticsearch. See Elasticsearch's [Installation](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) to get started.
 
 2. Open a new window and start the example server:
 
