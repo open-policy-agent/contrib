@@ -2,6 +2,10 @@ VERSION := "0.1"
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 GO := go
 
+CGO_ENABLED ?= 0
+# Force modules on and to use the vendor directory.
+GO := CGO_ENABLED=$(CGO_ENABLED) GO111MODULE=on GOFLAGS=-mod=vendor go
+
 ######################################################
 #
 # Development targets
