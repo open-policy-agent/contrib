@@ -13,12 +13,14 @@ usage() {
   echo '  -u: Specify the UID of the user for which the redirection is not'
   echo '      applied. Typically, this is the UID of the proxy container'
   echo '  -i: Comma separated list of IP ranges in CIDR form to redirect to envoy (optional)'
+  echo '  -w: Comma separated list of ports to allow inbound TCP traffic without redirecting to envoy (optional)'
   echo ''
 }
 
 IP_RANGES_INCLUDE=""
+WHITELIST_PORTS=""
 
-while getopts ":p:o:u:e:i:h" opt; do
+while getopts ":p:o:u:e:i:w:h" opt; do
   case ${opt} in
     p)
       ENVOY_IN_PORT=${OPTARG}
@@ -31,6 +33,9 @@ while getopts ":p:o:u:e:i:h" opt; do
       ;;
     i)
       IP_RANGES_INCLUDE=${OPTARG}
+      ;;
+    w)
+      WHITELIST_PORTS=${OPTARG}
       ;;
     h)
       usage
@@ -52,6 +57,15 @@ fi
 
 # Create a new chain for redirecting inbound traffic to Envoy port
 iptables -t nat -N ENVOY_IN_REDIRECT                                                    -m comment --comment "envoy/redirect-inbound-chain"
+
+# Skip Envoy for whitelisted ports
+if [[ WHITELIST_PORTS != "" ]]; then
+  IFS=,
+  for port in ${WHITELIST_PORTS}; do
+    iptables -t nat -A ENVOY_IN_REDIRECT -p tcp --dport ${port} -m conntrack --ctstate NEW,ESTABLISHED -j RETURN  -m comment --comment "envoy/whitelisted-port-ingress"
+  done
+fi
+
 iptables -t nat -A ENVOY_IN_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_IN_PORT}      -m comment --comment "envoy/redirect-to-envoy-inbound-port"
 
 # Redirect all inbound traffic to Envoy.
