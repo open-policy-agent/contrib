@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/dchest/siphash v1.2.0 // indirect
+	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
