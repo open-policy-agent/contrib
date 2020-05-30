@@ -131,7 +131,7 @@ def pretty_print(node):
             self.indent = indent
 
         def __call__(self, node):
-            print ' ' * self.indent, node.__class__.__name__
+            print(' ' * self.indent, node.__class__.__name__)
             return printer(self.indent + 2)
 
     vis = printer(0)
