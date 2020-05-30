@@ -180,7 +180,7 @@ def insert_object(table, cursor, obj):
     values = '(' + ','.join(['?'] * len(row_keys)) + ')'
     stmt = 'INSERT INTO {} {} VALUES {}'.format(table, keys, values)
     args = [str(obj[k]) for k in row_keys]
-    print str(stmt), args
+    print(str(stmt), args)
     cursor.execute(stmt, args)
 
 

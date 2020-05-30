@@ -59,7 +59,7 @@ unconditionally. In this case, the `defined` attribute will be True but the
 >>> result = opa.compile(q='data.example.allow==true', input={'method':'GET', 'path': ['deadbeef'], 'user': 'bob'}, unknowns=['posts'])
 >>> result.defined
 True
->>> print result.sql
+>>> print(result.sql)
 None
 """
 
