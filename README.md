@@ -14,6 +14,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Container Image Policy (Kubernetes and CoreOS Clair)](./image_enforcer)
 - [Data Filtering (SQL)](./data_filter_example)
 - [Data Filtering (Elasticsearch)](./data_filter_elasticsearch)
+- [Data Filtering (MongoDB)](./data_filter_mongodb)
 - [API Authorization with OPA and Kong](./kong_api_authz)
 
 This a list of integrations that are not currently part of the contrib repository:
