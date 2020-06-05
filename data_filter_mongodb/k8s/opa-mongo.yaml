@@ -1,0 +1,111 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: rego-policy
+  namespace: opa
+data:
+  example.rego: |-
+    package details.authz
+
+    allow {
+      input.method == "GET"
+      employee := data.employees[_]
+      employee.name == input.user
+      employee.name == input.path[1]
+    }
+
+    allow {
+      input.method == "GET"
+      employee := data.employees[_]
+      employee.manager == input.user
+      employee.name == input.path[1]
+    }
+
+    allow {
+      input.method == "GET"
+      input.path = ["employees"]
+      employee := data.employees[_]
+      input.user == "danerys"
+      employee.salary > 0
+      employee.salary < 300000
+    }
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: opa-mongo-config
+  namespace: opa
+data:
+  config.yaml: |-
+    cfg:
+      address: localhost:27017
+      database: opa-mongo
+      username: admin
+      password: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa-mongo
+  namespace: opa
+spec:
+  type: NodePort
+  selector:
+    app: opa-mongo
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9095
+      nodePort: 31111
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa-mongo
+  namespace: opa
+  labels:
+    app: opa-mongo
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: opa-mongo
+    spec:
+      containers:
+        - name: opa-mongo
+          image: vineeth97/opa-mongo:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9095
+          command: ["./opa-mongo", "run"]
+          args:
+            - -p=/opa/example.rego
+            - -c=/opa/config.yaml
+          volumeMounts:
+            - name: rego-volume
+              mountPath: /opa/example.rego
+              subPath: example.rego
+            - name: config-volume
+              mountPath: /opa/config.yaml
+              subPath: config.yaml
+        - name: mongo
+          image: mongo:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "admin"
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: "password"
+      volumes:
+        - name: rego-volume
+          configMap:
+            name: rego-policy
+        - name: config-volume
+          configMap:
+            name: opa-mongo-config
+  selector:
+    matchLabels:
+      app: opa-mongo

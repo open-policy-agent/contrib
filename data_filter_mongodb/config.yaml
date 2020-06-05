@@ -1,0 +1,5 @@
+cfg:
+  address: localhost:27017
+  database: opa-mongo
+  username: admin
+  password: password
