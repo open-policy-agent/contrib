@@ -50,6 +50,8 @@ system.
 auth required /lib/security/pam_opa.so url=http://opa:8181 authz_endpoint=/v1/data/sshd/authz display_endpoint=/v1/data/display pull_endpoint=/v1/data/pull log_level=debug
 ```
 
+**Warning:** Once this PAM module is configured, OPA must be responsive and configured with the appropriate policies or commands configured to use the OPA PAM module will fail. The example above blocks using `sudo` unless the endpoint `http://opa:8181/v1/data/sshd/authz` returns the expected response, which would prevent removing the module with a non-root account since `/etc/pam.d/sudo` requires admin privileges to edit. In such a situation, load a policy that sets `allow := true` into OPA using its [policies management APIs](https://www.openpolicyagent.org/docs/latest/rest-api/#create-or-update-a-policy).
+
 ## Configuration
 
 This section breaks down the different pieces in the PAM config `/etc/pam.d/sudo` example from above.
@@ -161,7 +163,7 @@ The following rules are required:
 ###### Example
 
 Let's assume that we have several running hosts each having a file `/etc/host_identity.json`
-which looks like this - 
+which looks like this -
 ```
 {
     "host_id": "<some host id>"
