@@ -3,5 +3,5 @@ flask
 Flask-Bootstrap
 git+git://github.com/open-policy-agent/rego-python@master
 pytest
-azure-storage >= 0.34.3
-azure-cosmos 
+azure-storage == 0.34.3
+azure-cosmos
