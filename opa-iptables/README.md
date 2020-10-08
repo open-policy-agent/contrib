@@ -14,7 +14,7 @@ $ make go-build
 - You can build opa-iptables on any system that has Docker running as follows:
 ```
 $ git clone https://github.com/open-policy-agent/contrib.git
-$ cd contib/opa-iptables
+$ cd contrib/opa-iptables
 $ make docker-build
 ```
 
