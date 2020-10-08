@@ -7,14 +7,14 @@ IPTables is a useful tool available to Linux kernel for filtering network packet
 - If you want to build opa-iptables right away, you need a working [Go environment](https://golang.org/doc/install). It requires Go version 1.12 and above.
 ```
 $ git clone https://github.com/open-policy-agent/contrib.git
-$ cd opa-iptables
+$ cd contrib/opa-iptables
 $ make go-build
 ```
 
 - You can build opa-iptables on any system that has Docker running as follows:
 ```
 $ git clone https://github.com/open-policy-agent/contrib.git
-$ cd opa-iptables
+$ cd contib/opa-iptables
 $ make docker-build
 ```
 
