@@ -1,0 +1,11 @@
+resources:
+- resources/serviceaccount.yaml
+- resources/secret.yaml
+- resources/deployment.yaml
+- resources/ingress.yaml
+- resources/rbac.yaml
+- resources/service.yaml
+configMapGenerator:
+- name: opa-kubernetes-api-client
+  files:
+  - policy/api_client.rego

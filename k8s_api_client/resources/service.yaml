@@ -1,0 +1,9 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: opa-kubernetes-api-client
+spec:
+  selector:
+    app: opa-kubernetes-api-client
+  ports:
+  - port: 8181
