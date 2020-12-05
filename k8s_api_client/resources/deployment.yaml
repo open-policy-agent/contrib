@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa-kubernetes-api-client
+  labels:
+    app: opa-kubernetes-api-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa-kubernetes-api-client
+  template:
+    metadata:
+      name: opa-kubernetes-api-client
+      labels:
+        app: opa-kubernetes-api-client
+    spec:
+      containers:
+      - name: opa
+        image: openpolicyagent/opa:edge-debug
+        args: [
+          "run",
+          "--server",
+          "--ignore=.*",
+          "--addr=:8181",
+          "--log-level=info",
+          "/policy"
+        ]
+        ports:
+        - containerPort: 8181
+        env:
+        - name: KUBERNETES_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: opa-kubernetes-api-client
+              key: token
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+            scheme: HTTP
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+            scheme: HTTP
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: policy
+          mountPath: /policy
+      volumes:
+      - name: policy
+        configMap:
+          name: opa-kubernetes-api-client
