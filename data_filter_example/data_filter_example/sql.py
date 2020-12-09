@@ -77,7 +77,7 @@ class Constant(object):
 
     def sql(self, **kwargs):
         if kwargs.get('use_single_quotes', False):
-            if isinstance(self.value, basestring):
+            if isinstance(self.value, str):
                 return "'" + self.value + "'"
         return json.dumps(self.value)
 
