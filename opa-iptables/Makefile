@@ -26,7 +26,7 @@ build: docker-build
 
 .PHONY: docker-build
 docker-build:
-	@docker run -it --rm -v $$(pwd):/go/src/$(PKG) \
+	@docker run --rm -v $$(pwd):/go/src/$(PKG) \
 		-e GOOS=$(GOOS) \
 		-e GO111MODULE=$(GO111MODULE) \
 		-w /go/src/$(PKG) golang:1.13-rc-alpine  \

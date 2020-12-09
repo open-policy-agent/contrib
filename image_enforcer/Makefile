@@ -4,7 +4,7 @@ REPOSITORY 	:= openpolicyagent/$(BIN)
 VERSION 	:= 0.1-dev
 
 build:
-	docker run -it --rm -v $$(pwd):/go/src/$(PKG) \
+	docker run --rm -v $$(pwd):/go/src/$(PKG) \
 		-w /go/src/$(PKG) golang:1.8-alpine \
 		go build -o $(BIN)_linux_amd64 .
 	docker build -t $(REPOSITORY):$(VERSION) \
