@@ -50,13 +50,22 @@ function _M.execute(conf)
         local encoded_token = authorization:gsub("Bearer ", "")
         token = jwt:load_jwt(encoded_token)
     end
-
     -- input document that will be send to opa
-    local input = {
+	local input
+	if conf.forward_request_headers then
+		input = {
         token = token,
         method = ngx.var.request_method,
         path = ngx.var.upstream_uri,
-    }
+		headers = ngx.req.get_headers(),
+		}
+	else
+		input = {
+			token = token,
+			method = ngx.var.request_method,
+			path = ngx.var.upstream_uri,
+		}
+	end
 
     local status, res = pcall(getDocument, input, conf)
 

@@ -4,6 +4,7 @@ local conf = {
     protocol = "https",
     host = "opa",
     port = 8181,
+    forward_request_headers = true,
     connection = {
       timeout = 5,
       pool = 1,
@@ -47,6 +48,8 @@ describe("opa:access", function()
     -- reset request method and path
     _G.ngx.var.request_method = "GET"
     _G.ngx.var.upstream_uri = "/api/endpoint"
+    _G.ngx.header["Accept"] = "application/json"
+    _G.ngx.header["Content-Type"] = "application/json"
   end)
 
   it("allow access", function()

@@ -25,7 +25,7 @@ RUN wget --no-check-certificate -O - https://luarocks.org/releases/luarocks-${LU
     && make install
 
 # install luacheck
-RUN luarocks install luacheck
+    RUN luarocks install luacheck
 
 COPY entrypoint.sh /
 ENTRYPOINT [ "/entrypoint.sh" ]
