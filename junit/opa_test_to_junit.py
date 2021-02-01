@@ -35,6 +35,7 @@ def main(json_doc):
                 'time': 0,
                 'tests': 0,
                 'failures': 0,
+                'skipped': 0,
                 'errors': 0
             }
 
@@ -55,6 +56,11 @@ def main(json_doc):
             failure = ET.Element("failure")
             testcase.append(failure)
 
+        if 'skip' in element:
+            package['skipped'] += 1
+            skipped = ET.Element("skipped")
+            testcase.append(skipped)
+
         if 'error' in element:
             package['errors'] += 1
             error = ET.Element(
@@ -70,6 +76,7 @@ def main(json_doc):
         'time': 0,
         'tests': 0,
         'failures': 0,
+        'skipped': 0,
         'errors': 0
     }
     el_testsuites = ET.Element("testsuites")
@@ -83,6 +90,7 @@ def main(json_doc):
             time=str(_nanos_to_seconds(suite['time'])),
             tests=str(suite['tests']),
             failures=str(suite['failures']),
+            skipped=str(suite['skipped']),
             errors=str(suite['errors'])
         )
         for testcase in suite['testcases']:
@@ -91,6 +99,7 @@ def main(json_doc):
         total_metrics['tests'] += len(suite['testcases'])
         total_metrics['time'] += suite['time']
         total_metrics['failures'] += suite['failures']
+        total_metrics['skipped'] += suite['skipped']
         total_metrics['errors'] += suite['errors']
 
         el_testsuites.append(el_testsuite)
@@ -98,6 +107,7 @@ def main(json_doc):
     el_testsuites.set("time", str(_nanos_to_seconds(total_metrics['time'])))
     el_testsuites.set("tests", str(total_metrics['tests']))
     el_testsuites.set("failures", str(total_metrics['failures']))
+    el_testsuites.set("skipped", str(total_metrics['skipped']))
     el_testsuites.set("errors", str(total_metrics['errors']))
 
     tree = ET.ElementTree(el_testsuites)
