@@ -1,0 +1,8 @@
+resources:
+- kubernetes/resources.yaml
+
+configMapGenerator:
+- name: opa-k8s-authz-policy
+  namespace: opa
+  files:
+  - policy/policy.rego

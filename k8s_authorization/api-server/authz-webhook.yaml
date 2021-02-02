@@ -1,0 +1,21 @@
+clusters:
+- name: opa
+  cluster:
+    # For the purpose of the demo we use a self-signed certificate.
+    # This should obviously be changed for production purposes.
+    insecure-skip-tls-verify: true
+    # Use static IP configured for service as the kubernetes DNS service (CoreDNS)
+    # can't be used by the API server (as that would be a circular dependency).
+    server: https://10.96.167.0/v0/data/k8s/authz/decision
+users:
+- name: api-server
+  user:
+    # Authentication method to use for accessing OPA itself
+    # See https://www.openpolicyagent.org/docs/latest/security/#authentication-and-authorization
+    token: test-token
+current-context: webhook
+contexts:
+- context:
+    cluster: opa
+    user: api-server
+  name: webhook
