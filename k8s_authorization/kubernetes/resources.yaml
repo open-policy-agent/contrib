@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa-authz-webhook
+  namespace: opa
+  labels:
+    app: opa
+spec:
+  clusterIP: 10.96.167.0
+  ports:
+    - port: 443
+      targetPort: 8443
+  selector:
+    app: opa
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: opa
+  namespace: opa
+  labels:
+    app: opa
+spec:
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+    spec:
+      volumes:
+        - name: cert-volume
+          emptyDir: {}
+        - name: policy-volume
+          configMap:
+            name: opa-k8s-authz-policy
+      initContainers:
+        - name: cert-create
+          image: frapsoft/openssl:latest
+          args: [
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:4096",
+            "-keyout",
+            "/certs/key.pem",
+            "-out",
+            "/certs/cert.pem",
+            "-nodes",
+            "-days",
+            "365",
+            "-subj",
+            "/C=SE/ST=Stockholm/L=Stockholm/O=Styra/OU=Org/CN=10.96.167.0"
+          ]
+          volumeMounts:
+            - mountPath: /certs
+              name: cert-volume
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:0.26.0-rootless
+          ports:
+            - containerPort: 8443
+          args:
+            [
+              "run",
+              "--server",
+              "--ignore=.*",
+              "--addr=:8443",
+              "--log-level=error",
+              "--log-format=json-pretty",
+              "--shutdown-grace-period=25",
+              "--shutdown-wait-period=10",
+              "--set=caching.inter_query_builtin_cache.max_size_bytes=128000000",
+              "--set=decision_logs.console=true",
+              "--tls-cert-file=/certs/cert.pem",
+              "--tls-private-key-file=/certs/key.pem",
+              "/policy/"
+            ]
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "125m"
+            limits:
+              memory: "256Mi"
+              cpu: "700m"
+          env:
+            - name: APP_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['app']
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 12000
+            runAsGroup: 12000
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - all
+          volumeMounts:
+            - mountPath: /certs
+              name: cert-volume
+            - mountPath: /policy
+              name: policy-volume
+      enableServiceLinks: false
+      # Run only on the master nodes (with the API server)
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
