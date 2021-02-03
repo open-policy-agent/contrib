@@ -9,13 +9,22 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [HTTP API Authorization (Linkerd)](./linkerd_authz)
 - [HTTP API Authorization (Python)](./api_authz)
 - [HTTP API Authorization (Dart)](./dart_authz)
+- [HTTP API Authorization (Kong)](./kong_api_authz)
 - [SSH and sudo Authorization (PAM)](./pam_opa)
 - [Puppet Authorization](./puppet_example)
 - [Container Image Policy (Kubernetes and CoreOS Clair)](./image_enforcer)
 - [Data Filtering (SQL)](./data_filter_example)
 - [Data Filtering (Elasticsearch)](./data_filter_elasticsearch)
 - [Data Filtering (MongoDB)](./data_filter_mongodb)
-- [API Authorization with OPA and Kong](./kong_api_authz)
+- [Data Filtering (Azure)](./data_filter_azure)
+- [Cloud Foundry Policies](./cloud_foundry)
+- [Decision Logger Plugin](./decision_logger_plugin_example)
+- [IPTables (Linux)](./opa-iptables)
+- [IPTables (Envoy)](./envoy_iptables)
+- [JUnit Test Format Conversion](./junit)
+- [Kubernetes Authorization](./k8s_authorization)
+- [Kubernetes Node Selector](./k8s_node_selector)
+- [Kubernetes API Client](./k8s_api_client)
 
 This a list of integrations that are not currently part of the contrib repository:
 
