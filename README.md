@@ -26,14 +26,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Kubernetes Node Selector](./k8s_node_selector)
 - [Kubernetes API Client](./k8s_api_client)
 
-This a list of integrations that are not currently part of the contrib repository:
-
-- [HTTP API Authorization with Kong (built by @maxTN)](https://github.com/TravelNest/kong-authorization-opa)
-- [Helm policies (built by @eicnix)](https://github.com/eicnix/helm-opa)
-- [Install and load OPA with Habitat (built by @srenatus)](https://github.com/habitat-sh/core-plans/tree/master/opa)
-- [Python/Flask extension for HTTP API Authorization and Policy Enforcement Points (built by @EliuX)](https://github.com/EliuX/flask-opa)
-- [ANTLR v4 Rego Grammar (built by @anadon)](https://github.com/antlr/grammars-v4/tree/master/rego)
-- [HTTP API Authorization with Slim Framework (PHP) (built by @segrax)](https://github.com/segrax/opa-php-examples)
+For a comprehensive list of integrations, see the OPA [ecosystem](https://www.openpolicyagent.org/docs/latest/ecosystem/) page.
 
 ## Contributing
 
