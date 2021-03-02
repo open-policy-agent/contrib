@@ -1,0 +1,18 @@
+bases:
+  - https://raw.githubusercontent.com/open-policy-agent/gatekeeper/release-3.3/deploy/gatekeeper.yaml
+
+resources:
+  - mtail_service.yaml
+
+patchesStrategicMerge:
+  - mtail_sidecar_patch.yaml
+
+configMapGenerator:
+  - name: mtail-config
+    files:
+      - gatekeeper.mtail
+
+images:
+ - name: mtail-gatekeeper-sidecar
+   newName: openpolicyagent/gatekeeper_mtail_violatons_exporter
+   newTag: latest
