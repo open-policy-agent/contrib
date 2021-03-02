@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mtail-service
+  namespace: gatekeeper-system
+  annotations:
+      prometheus.io/scrape: 'true'
+      prometheus.io/port:   '3903'
+spec:
+  selector: 
+    control-plane: controller-manager
+    gatekeeper.sh/system: "yes"
+    gatekeeper.sh/operation: audit
+  type: ClusterIP  
+  ports:
+    - port: 3903
+      targetPort: 3903

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatekeeper-audit
+  namespace: gatekeeper-system
+spec:
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '3903'
+    spec:
+      containers:
+      - name: mtail
+        args:
+        - -logtostderr
+        - -expired_metrics_gc_interval
+        - 30s
+        - -v
+        - "1" 
+        - -progs 
+        - /config
+        - -logs 
+        # container you want to tail the logs for
+        # /var/log/containers/<deployment>*<container name>*.log
+        # assumes you are only running one gatekeeper per cluster
+        - /var/log/containers/gatekeeper-audit-manager*manager*.log
+        # image label should match the label applied in the mtail-image pipeline job, and
+        # the mtail version checked out in the dockerfile
+        image: mtail-gatekeeper-sidecar
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        resources:
+          limits:
+            cpu: "1"
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+      volumes:
+      - name: config-volume
+        configMap:
+          # Provide the name of the ConfigMap containing the .mtail files
+          name: mtail-config
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers

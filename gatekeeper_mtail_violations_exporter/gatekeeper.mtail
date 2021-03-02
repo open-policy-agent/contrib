@@ -1,0 +1,45 @@
+# model the gauge based on labels
+gauge opa_violations by constraint_kind, constraint_name, resource_kind, resource_namespace, resource_name, msgid, context
+
+# temporary variable to store message id
+text msgid 
+
+# temporary variable to store message context
+text context
+
+# pattern for opa violation attributes
+const VIOLATION /{.*\\"constraint_kind\\"\s*:\s*\\"(?P<constraint_kind>.*?)\\".*\\"constraint_name\\"\s*:\s*\\"(?P<constraint_name>.*?)\\".*\\"resource_kind\\"\s*:\s*\\"(?P<resource_kind>.*?)\\".*\\"resource_namespace\\"\s*:\s*\\"(?P<resource_namespace>.*?)\\".*\\"resource_name\\"\s*:\s*\\"(?P<resource_name>.*?)\\".*}/
+
+# pattern for custom message
+const MESSAGE /msgid=(?P<msgid>.*?)\s+context=(?P<context>.*?)\s+/
+
+# pattern for violation_audited event
+const VIOLATION_AUDITED /violation_audited/
+
+# match pattern violation_audited in gatekeeper log ("event_type": "violation_audited")
+VIOLATION_AUDITED {
+
+  # initialize temporary variables
+  msgid = "na"
+  context = "na"
+  
+  # extract msgid and context if present
+  MESSAGE {
+    msgid = $msgid
+    context = $context
+  }
+
+  # extract matching groups that are used as labels for the gauge
+  VIOLATION {
+
+    # set the gauge value for current metrics to 1
+    opa_violations[$constraint_kind,$constraint_name,$resource_kind,$resource_namespace,$resource_name,msgid,context] = 1
+
+    # set current gauge to be garbage collected after a set interval to avoid stale metrics
+    # Interval should be greater than (prometheus scrape interval) + (audit interval) + (audit runtime) [30s + 1hour + 300s]
+    # to avoid gaps in metrics.
+    del opa_violations[$constraint_kind,$constraint_name,$resource_kind,$resource_namespace,$resource_name,msgid,context] after 3930s
+
+  }
+
+}
