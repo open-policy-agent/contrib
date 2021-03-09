@@ -25,6 +25,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Kubernetes Authorization](./k8s_authorization)
 - [Kubernetes Node Selector](./k8s_node_selector)
 - [Kubernetes API Client](./k8s_api_client)
+- [Grafana Dashboard](./grafana-dashboard)
 
 For a comprehensive list of integrations, see the OPA [ecosystem](https://www.openpolicyagent.org/docs/latest/ecosystem/) page.
 
