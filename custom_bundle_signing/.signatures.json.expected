@@ -1,0 +1,5 @@
+{
+ "signatures": [
+  "some_signature;policy/awesome.rego;policy/bundle.tar.gz"
+ ]
+}
