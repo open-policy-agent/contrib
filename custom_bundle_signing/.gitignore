@@ -1,0 +1,5 @@
+bundle.tar.gz
+bundle.tar
+*.swp
+bin/
+.signatures.json
