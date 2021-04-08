@@ -21,7 +21,11 @@ note right of kong-plugin-opa
     .            },
     .        },
     .        "method": "GET",
-    .        "path": "/myService"
+    .        "path": "/myService",
+    .        "headers" : {
+    .           "Accept" : "application/json",
+    .           "Content-Type" : "application/json"
+    .        }
     .    }
     }
 end note

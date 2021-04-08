@@ -78,7 +78,13 @@ return {
               },
             },
           },
-        },
+		  {
+			forward_request_headers = {
+				type = "boolean",
+				default = false,
+			},
+		  },
+		},
       },
     },
   },
