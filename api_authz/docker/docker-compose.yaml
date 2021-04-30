@@ -1,7 +1,7 @@
 version: '2'
 services:
   opa:
-    image: openpolicyagent/opa:0.13.2
+    image: openpolicyagent/opa:0.28.0-rootless
     ports:
       - 8181:8181
     # WARNING: OPA is NOT running with an authorization policy configured. This
@@ -12,15 +12,27 @@ services:
     command:
       - "run"
       - "--server"
-      - "--log-level=debug"
-      - "api_authz.rego"
-    volumes:
-      - ./policy/api_authz.rego:/api_authz.rego
-
+      - "--log-format=json-pretty"
+      - "--set=decision_logs.console=true"
+      - "--set=services.nginx.url=http://bundle_server"
+      - "--set=bundles.nginx.service=nginx"
+      - "--set=bundles.nginx.resource=bundle.tar.gz"
+      - "--set=bundles.nginx.polling.min_delay_seconds=10"
+      - "--set=bundles.nginx.polling.max_delay_seconds=30"
+    depends_on:
+      - bundle_server
   api_server:
-    image: openpolicyagent/demo-restful-api:latest
+    image: openpolicyagent/demo-restful-api:0.3
     ports:
       - 5000:5000
     environment:
       - OPA_ADDR=http://opa:8181
       - POLICY_PATH=/v1/data/httpapi/authz
+    depends_on:
+      - opa
+  bundle_server:
+    image: nginx:1.20.0-alpine
+    ports:
+      - 8888:80
+    volumes:
+      - ../:/usr/share/nginx/html/
