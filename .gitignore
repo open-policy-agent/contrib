@@ -4,5 +4,7 @@
 wasm/cloudflare-worker/dist
 wasm/cloudflare-worker/node_modules
 *.wasm
+*.tar.gz
 data_filter_mongodb/vendor
 data_filter_mongodb/bin
+.idea
