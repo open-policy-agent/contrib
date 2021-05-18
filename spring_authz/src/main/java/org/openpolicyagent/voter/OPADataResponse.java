@@ -12,6 +12,7 @@ public class OPADataResponse {
         return this.result;
     }
 
+    @SuppressWarnings("unused")
     public void setResult(boolean result) {
         this.result = result;
     }

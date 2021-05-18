@@ -14,7 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 public class OPAVoter implements AccessDecisionVoter<Object> {
 
-    private String opaUrl;
+    private final String opaUrl;
 
     public OPAVoter(String opaUrl) {
         this.opaUrl = opaUrl;
@@ -38,7 +38,7 @@ public class OPAVoter implements AccessDecisionVoter<Object> {
         }
 
         FilterInvocation filter = (FilterInvocation) obj;
-        Map<String, String> headers = new HashMap<String, String>();
+        Map<String, String> headers = new HashMap<>();
 
         for (Enumeration<String> headerNames = filter.getRequest().getHeaderNames(); headerNames.hasMoreElements();) {
             String header = headerNames.nextElement();
@@ -47,7 +47,7 @@ public class OPAVoter implements AccessDecisionVoter<Object> {
 
         String[] path = filter.getRequest().getRequestURI().replaceAll("^/|/$", "").split("/");
 
-        Map<String, Object> input = new HashMap<String, Object>();
+        Map<String, Object> input = new HashMap<>();
         input.put("auth", authentication);
         input.put("method", filter.getRequest().getMethod());
         input.put("path", path);
@@ -57,7 +57,7 @@ public class OPAVoter implements AccessDecisionVoter<Object> {
         HttpEntity<?> request = new HttpEntity<>(new OPADataRequest(input));
         OPADataResponse response = client.postForObject(this.opaUrl, request, OPADataResponse.class);
 
-        if (!response.getResult()) {
+        if (response == null || !response.getResult()) {
             return ACCESS_DENIED;
         }
 

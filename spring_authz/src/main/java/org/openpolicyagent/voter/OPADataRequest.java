@@ -10,6 +10,7 @@ public class OPADataRequest {
         this.input = input;
     }
 
+    @SuppressWarnings("unused")
     public Map<String, Object> getInput() {
         return this.input;
     }
