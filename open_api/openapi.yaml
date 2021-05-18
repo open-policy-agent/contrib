@@ -3,7 +3,7 @@
 openapi: 3.0.3
 # servers:
 #  - url: 'http://localhost:8181'
-#    description: Docker [GAZCONROY - You would normally have a bunch of these: live server, test server, Heroku server and so on. These are only  useful if you want to enable 'try it out' features (which is a bit problematic for quite a few OAS API calls]]
+#    description: Docker
 tags:
   - name: Policy API
     description: 'Allows you to add, remove and modify policy modules. *Policy module identifiers are only used for management purposes. They are not used outside the Policy API.*'
@@ -868,7 +868,6 @@ components:
           items:
             properties:
               id:
-                # [ANDERSEKNERT This should probably be something else]
                 description: The name of a policy module
                 example: example2
                 type: string
@@ -965,7 +964,6 @@ components:
         metrics:
           type: object
           properties:
-            # [GAZCONROY Some of these are from https://github.com/open-policy-agent/opa/blob/master/docs/content/rest-api.md#performance-metrics, two or three other metrics appear consistently in responses. The 'instrument=true only' responses are indicated in the 'description' field.]
             timer_rego_input_parse_ns:
               description: Time taken (in nanonseconds) to parse the input
               type: number
@@ -1164,6 +1162,5 @@ components:
                             type: string
                           value:
                             type: string
-# [GAZCONROY In terms of the Open API Specification, this is the place you pop in the authentication methods for testing 'try it out' calls (see previous comment).]
   securitySchemes: {}
 security: []
