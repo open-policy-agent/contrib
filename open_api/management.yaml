@@ -12,9 +12,8 @@ info:
       - **[View the specification in *Redoc* (default)](management.html)**
       - **[View the specification in *Swagger UI*](management-swagger-ui.html)**
   version: 0.25.2
-  # [ANDERSEKNERT ...what is the best way of templating this...to make sure this is automatically kept up to date with each release.]
   x-logo:
-    url: 'https://github.com/open-policy-agent/opa/blob/master/docs/website/static/img/logos/opa-horizontal-color.png?raw=true'
+    url: 'https://raw.githubusercontent.com/open-policy-agent/opa/main/docs/website/static/img/logos/opa-horizontal-color.png'
     backgroundColor: '#FFFFFF'
     altText: 'OPA logo'
   contact:
@@ -31,7 +30,7 @@ paths:
     get:
       summary: Bundle service
       description: |-
-        OPA expects the service to expose an API endpoint that serves bundles. The bundle API allows clients to download bundles at an arbitrary URL (in combination with `{service_path}`. 
+        OPA expects the service to expose an API endpoint that serves bundles. The bundle API allows clients to download bundles at an arbitrary URL (in combination with `{service_path}`.
         For example, using the *[configuration](https://www.openpolicyagent.org/docs/latest/configuration/) example* below will fetch bundles from *https//example.com/service/v1/somedir/bundle.tar.gz*. The URL is constructed as follows:
 
         ```
