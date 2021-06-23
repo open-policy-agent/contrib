@@ -75,7 +75,7 @@ function _M.execute(conf)
     kong.log.debug(interp("Access allowed to ${method} ${path} for user ${subject}", {
         method = input.method,
         path = input.path,
-        subject = token.payload.sub
+        subject = (token.payload and token.payload.sub or 'anonymous')
     }))
 end
 
