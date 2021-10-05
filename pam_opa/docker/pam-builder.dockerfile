@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 # Fetch and install the JSON library.
 # Source is at: https://github.com/akheron/jansson
-RUN wget http://www.digip.org/jansson/releases/jansson-2.11.tar.gz && \
+RUN wget https://www.digip.org/jansson/releases/jansson-2.11.tar.gz && \
     tar -xvf jansson-2.11.tar.gz && \
     cd jansson-2.11 && \
     ./configure --prefix=/usr && \
