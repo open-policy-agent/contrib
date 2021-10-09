@@ -25,7 +25,7 @@ deployed from the [policy](policy) directory. Kind uses kubeadm so that's the
 config format used for providing the authorization webhook flags to the API
 server (see [kind-conf.yaml](#kind-conf.yaml).
 
-### Testing the auhtorization webhook
+### Testing the authorization webhook
 
 With the cluster up and running, you may now issue the usual `kubectl` commands
 to interact with your local Kubernetes API. Since the default user for kind is a
