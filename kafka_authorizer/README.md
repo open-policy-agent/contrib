@@ -3,6 +3,12 @@
 This directory contains a Kafka authorizer plugin that uses OPA to enforce
 policy decisions.
 
+**DEPRECATED** This authorizer plugin has been replaced by the [opa-kafka-plugin](https://github.com/anderseknert/opa-kafka-plugin),
+which works on modern versions of Kafka, and provides additional features. The code here is kept here for historical reasons only.
+
+For more information on integrating Open Policy Agent with Apache Kafka, see the
+[OPA documentation](https://www.openpolicyagent.org/docs/latest/kafka-authorization/) on the topic.
+
 ## Build
 
 To build the plugin, you must have Docker installed. If you want to build
