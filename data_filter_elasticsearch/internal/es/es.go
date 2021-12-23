@@ -7,7 +7,6 @@ package es
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/olivere/elastic"
 )
@@ -180,90 +179,6 @@ func GetIndexMapping() string {
 	return mapping
 }
 
-// Elasticsearch queries
-
-// GenerateTermQuery returns an ES Term Query.
-func GenerateTermQuery(fieldName string, fieldValue interface{}) *elastic.TermQuery {
-	return elastic.NewTermQuery(fieldName, fieldValue).QueryName("TermQuery")
-
-}
-
-// GenerateNestedQuery returns an ES Nested Query.
-func GenerateNestedQuery(path string, query elastic.Query) *elastic.NestedQuery {
-	return elastic.NewNestedQuery(path, query).QueryName("NestedQuery").IgnoreUnmapped(true)
-
-}
-
-// GenerateBoolFilterQuery returns an ES Filter Bool Query.
-func GenerateBoolFilterQuery(filters []elastic.Query) *elastic.BoolQuery {
-	q := elastic.NewBoolQuery()
-	for _, filter := range filters {
-		q = q.Filter(filter)
-	}
-	q = q.QueryName("BoolFilterQuery")
-	return q
-
-}
-
-// GenerateBoolShouldQuery returns an ES Should Bool Query.
-func GenerateBoolShouldQuery(queries []elastic.Query) *elastic.BoolQuery {
-	q := elastic.NewBoolQuery().QueryName("BoolShouldQuery")
-	for _, query := range queries {
-		q = q.Should(query)
-	}
-	return q
-}
-
-// GenerateBoolMustNotQuery returns an ES Must Not Bool Query.
-func GenerateBoolMustNotQuery(fieldName string, fieldValue interface{}) *elastic.BoolQuery {
-	q := elastic.NewBoolQuery().QueryName("BoolMustNotQuery")
-	q = q.MustNot(elastic.NewTermQuery(fieldName, fieldValue))
-	return q
-}
-
-// GenerateMatchAllQuery returns an ES MatchAll Query.
-func GenerateMatchAllQuery() *elastic.MatchAllQuery {
-	return elastic.NewMatchAllQuery().QueryName("MatchAllQuery")
-}
-
-// GenerateMatchQuery returns an ES Match Query.
-func GenerateMatchQuery(fieldName string, fieldValue interface{}) *elastic.MatchQuery {
-	return elastic.NewMatchQuery(fieldName, fieldValue).QueryName("MatchQuery")
-}
-
-// GenerateQueryStringQuery returns an ES Query String Query.
-func GenerateQueryStringQuery(fieldName string, fieldValue interface{}) *elastic.QueryStringQuery {
-	queryString := fmt.Sprintf("*%s*", fieldValue)
-	q := elastic.NewQueryStringQuery(queryString).QueryName("QueryStringQuery")
-	q = q.DefaultField(fieldName)
-	return q
-}
-
-// GenerateRegexpQuery returns an ES Regexp Query.
-func GenerateRegexpQuery(fieldName string, fieldValue interface{}) *elastic.RegexpQuery {
-	return elastic.NewRegexpQuery(fieldName, fieldValue.(string))
-}
-
-// GenerateRangeQueryLt returns an ES Less Than Range Query.
-func GenerateRangeQueryLt(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Lt(val)
-}
-
-// GenerateRangeQueryLte returns an ES Less Than or Equal Range Query.
-func GenerateRangeQueryLte(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Lte(val)
-}
-
-// GenerateRangeQueryGt returns an ES Greater Than Range Query.
-func GenerateRangeQueryGt(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Gt(val)
-}
-
-// GenerateRangeQueryGte returns an ES Greater Than or Equal Range Query.
-func GenerateRangeQueryGte(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Gte(val)
-}
-
 // ExecuteEsSearch executes ES query.
 func ExecuteEsSearch(ctx context.Context, client *elastic.Client, indexName string, query elastic.Query) (*elastic.SearchResult, error) {
 	searchResult, err := client.Search().
@@ -275,29 +190,6 @@ func ExecuteEsSearch(ctx context.Context, client *elastic.Client, indexName stri
 		return nil, err
 	}
 	return searchResult, nil
-}
-
-func analyzeSearchResult(searchResult *elastic.SearchResult) {
-
-	if searchResult.Hits.TotalHits > 0 {
-		fmt.Printf("Found a total of %d posts\n", searchResult.Hits.TotalHits)
-
-		// Iterate through results
-		for _, hit := range searchResult.Hits.Hits {
-			// Deserialize hit
-			var t Post
-			err := json.Unmarshal(*hit.Source, &t)
-			if err != nil {
-				panic(err)
-			}
-
-			// Print with post
-			fmt.Printf("\nPost ID: %s\nAuthor: %s\nMessage: %s\nDepartment: %s\nClearance: %d\n", t.ID, t.Author, t.Message, t.Department, t.Clearance)
-		}
-	} else {
-		// No hits
-		fmt.Print("Found no posts\n")
-	}
 }
 
 // GetPrettyESResult returns formatted ES results.

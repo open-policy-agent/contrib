@@ -5,17 +5,19 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/olivere/elastic"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
-	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/opa"
+	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/resolvers"
+	"github.com/open-policy-agent/opa/sdk"
 )
 
 const (
@@ -24,6 +26,8 @@ const (
 	apiCodeInternalError = "internal_error"
 	apiCodeNotAuthorized = "not_authorized"
 )
+
+var opa *sdk.OPA
 
 type apiError struct {
 	Error struct {
@@ -57,6 +61,7 @@ func New(esClient *elastic.Client, index string) *ServerAPI {
 
 // Run the server.
 func (api *ServerAPI) Run(ctx context.Context) error {
+	opa = startOpa()
 	fmt.Println("Starting server 8080....")
 	return http.ListenAndServe(":8080", api.router)
 }
@@ -73,7 +78,7 @@ func (api *ServerAPI) handlGetPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	combinedQuery := combineQuery(es.GenerateMatchAllQuery(), result.Query)
+	combinedQuery := combineQuery(resolvers.GenerateMatchAllQuery(), result.Query)
 	queryEs(r.Context(), api.es, api.index, combinedQuery, w)
 
 }
@@ -91,11 +96,26 @@ func (api *ServerAPI) handleGetPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	combinedQuery := combineQuery(es.GenerateTermQuery("id", vars["id"]), result.Query)
+	combinedQuery := combineQuery(resolvers.GenerateTermQuery("id", vars["id"]), result.Query)
 	queryEs(r.Context(), api.es, api.index, combinedQuery, w)
 }
 
-func queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
+func startOpa() *sdk.OPA {
+	config, err := os.ReadFile("opa-conf.yaml")
+	if err != nil {
+
+		panic(err)
+	}
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: bytes.NewReader(config),
+	})
+	if err != nil {
+		panic(err)
+	}
+	return opa
+}
+
+func queryOPA(w http.ResponseWriter, r *http.Request) (resolvers.Result, error) {
 
 	user := r.Header.Get("Authorization")
 	path := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -106,20 +126,24 @@ func queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
 		"user":   user,
 	}
 
-	// load policy
-	module, err := ioutil.ReadFile(opa.PolicyFileName)
+	decision, err := opa.Partial(r.Context(), sdk.PartialOptions{
+		Input:    input,
+		Unknowns: []string{"data.elastic"},
+		Path:     "example/allow",
+		Query:    "data.example.allow == true",
+		Resolver: &resolvers.ElasticResolver{},
+	})
 	if err != nil {
-		return opa.Result{}, fmt.Errorf("failed to read policy: %v", err)
+		return resolvers.Result{}, err
 	}
-
-	return opa.Compile(r.Context(), input, module)
+	return decision.Result.(resolvers.Result), nil
 }
 
 func combineQuery(queryFromHandler elastic.Query, queryFromOpa elastic.Query) elastic.Query {
 	var combinedQuery elastic.Query = queryFromHandler
 	if queryFromOpa != nil {
 		queries := []elastic.Query{queryFromOpa, queryFromHandler}
-		combinedQuery = es.GenerateBoolFilterQuery(queries)
+		combinedQuery = resolvers.GenerateBoolFilterQuery(queries)
 	}
 	return combinedQuery
 }
