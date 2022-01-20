@@ -227,6 +227,13 @@ paths:
 
         This behavior is similar to the Unix command [mkdir -p](https://en.wikipedia.org/wiki/Mkdir#Options).
       operationId: putDocument
+      requestBody:
+        description: The JSON document to write to the specified path.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/dataSchema'
       parameters:
         - $ref: '#/components/parameters/ifNoneMatchParameter'
       tags:
@@ -803,6 +810,15 @@ components:
                }
              }
            }
+    dataSchema:
+      example: |-
+        {
+          "users": {
+            "user-id-1": {
+              "isAdmin": true
+            }
+          }
+        }
     webhookInputSchema:
       type: object
       example: |-
