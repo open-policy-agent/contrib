@@ -1,4 +1,4 @@
-package resolvers
+package mapper
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/open-policy-agent/opa/rego"
 )
 
-type ElasticResolver struct {
+type ElasticMapper struct {
 }
 
 type Result struct {
@@ -17,26 +17,30 @@ type Result struct {
 	Query   elastic.Query
 }
 
-func (e *ElasticResolver) ProcessResults(pq *rego.PartialQueries) (interface{}, interface{}, error) {
+func (e *ElasticMapper) MapResults(pq *rego.PartialQueries) (interface{}, error) {
 	if len(pq.Queries) == 0 {
 		// always deny
-		return Result{Defined: false}, Result{Defined: true}, nil
+		return Result{Defined: false}, nil
 	}
 
 	for _, query := range pq.Queries {
 		if len(query) == 0 {
 			// always allow
-			return Result{Defined: true}, &Result{Defined: true}, nil
+			return Result{Defined: true}, nil
 		}
 	}
 	result, err := processQuery(pq)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	log, err := result.Query.Source()
+	return result, err
+}
 
-	return result, map[string]interface{}{"Defined": true, "Query": log}, err
+func (e *ElasticMapper) ResultToJSON(results interface{}) (interface{}, error) {
+	result := results.(Result)
+	log, err := result.Query.Source()
+	return map[string]interface{}{"Defined": result.Defined, "Query": log}, err
 }
 
 func processQuery(pq *rego.PartialQueries) (Result, error) {
