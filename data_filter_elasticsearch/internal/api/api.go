@@ -16,7 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/olivere/elastic"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
-	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/resolvers"
+	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/mapper"
 	"github.com/open-policy-agent/opa/sdk"
 )
 
@@ -78,7 +78,7 @@ func (api *ServerAPI) handlGetPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	combinedQuery := combineQuery(resolvers.GenerateMatchAllQuery(), result.Query)
+	combinedQuery := combineQuery(mapper.GenerateMatchAllQuery(), result.Query)
 	queryEs(r.Context(), api.es, api.index, combinedQuery, w)
 
 }
@@ -96,7 +96,7 @@ func (api *ServerAPI) handleGetPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	combinedQuery := combineQuery(resolvers.GenerateTermQuery("id", vars["id"]), result.Query)
+	combinedQuery := combineQuery(mapper.GenerateTermQuery("id", vars["id"]), result.Query)
 	queryEs(r.Context(), api.es, api.index, combinedQuery, w)
 }
 
@@ -106,6 +106,7 @@ func startOpa() *sdk.OPA {
 
 		panic(err)
 	}
+
 	opa, err := sdk.New(context.Background(), sdk.Options{
 		Config: bytes.NewReader(config),
 	})
@@ -115,7 +116,7 @@ func startOpa() *sdk.OPA {
 	return opa
 }
 
-func queryOPA(w http.ResponseWriter, r *http.Request) (resolvers.Result, error) {
+func queryOPA(w http.ResponseWriter, r *http.Request) (mapper.Result, error) {
 
 	user := r.Header.Get("Authorization")
 	path := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -129,21 +130,20 @@ func queryOPA(w http.ResponseWriter, r *http.Request) (resolvers.Result, error) 
 	decision, err := opa.Partial(r.Context(), sdk.PartialOptions{
 		Input:    input,
 		Unknowns: []string{"data.elastic"},
-		Path:     "example/allow",
 		Query:    "data.example.allow == true",
-		Resolver: &resolvers.ElasticResolver{},
+		Mapper:   &mapper.ElasticMapper{},
 	})
 	if err != nil {
-		return resolvers.Result{}, err
+		return mapper.Result{}, err
 	}
-	return decision.Result.(resolvers.Result), nil
+	return decision.Result.(mapper.Result), nil
 }
 
 func combineQuery(queryFromHandler elastic.Query, queryFromOpa elastic.Query) elastic.Query {
 	var combinedQuery elastic.Query = queryFromHandler
 	if queryFromOpa != nil {
 		queries := []elastic.Query{queryFromOpa, queryFromHandler}
-		combinedQuery = resolvers.GenerateBoolFilterQuery(queries)
+		combinedQuery = mapper.GenerateBoolFilterQuery(queries)
 	}
 	return combinedQuery
 }
