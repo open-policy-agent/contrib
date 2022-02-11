@@ -7,6 +7,24 @@ local function interp(s, tab)
     return (s:gsub('($%b{})', function(w) return tab[w:sub(3, -2)] or w end))
 end
 
+-- slice a list
+local function slice(list, from, to)
+    local sliced_results = {};
+    for i=from, to do
+        table_insert(sliced_results, list[i]);
+    end;
+    return sliced_results;
+end
+
+-- split string based on delimiter
+local function split(s, delimiter)
+    local result = {};
+    for match in (s..delimiter):gmatch("(.-)"..delimiter) do
+        table_insert(result, match);
+    end
+    return result
+end
+
 -- query "Get a Document (with Input)" endpoint from the OPA Data API
 local function getDocument(input, conf)
     -- serialize the input into a string containing the JSON representation
@@ -51,11 +69,15 @@ function _M.execute(conf)
         token = jwt:load_jwt(encoded_token)
     end
 
+    local list_path = split(ngx.var.upstream_uri, "/")
+    local split_path = slice(list_path, 2, #list_path)
+
     -- input document that will be send to opa
     local input = {
         token = token,
         method = ngx.var.request_method,
         path = ngx.var.upstream_uri,
+        split_path = split_path,
     }
 
     local status, res = pcall(getDocument, input, conf)
