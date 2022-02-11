@@ -71,6 +71,7 @@ function _M.execute(conf)
 
     local list_path = split(ngx.var.upstream_uri, "/")
     local split_path = slice(list_path, 2, #list_path)
+    local querystring = kong.request.get_query()
 
     -- input document that will be send to opa
     local input = {
@@ -78,6 +79,7 @@ function _M.execute(conf)
         method = ngx.var.request_method,
         path = ngx.var.upstream_uri,
         split_path = split_path,
+        querystring = querystring,
     }
 
     local status, res = pcall(getDocument, input, conf)
