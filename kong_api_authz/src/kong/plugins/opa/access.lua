@@ -11,7 +11,7 @@ end
 local function slice(list, from, to)
     local sliced_results = {};
     for i=from, to do
-        table_insert(sliced_results, list[i]);
+        table.insert(sliced_results, list[i]);
     end;
     return sliced_results;
 end
@@ -20,7 +20,7 @@ end
 local function split(s, delimiter)
     local result = {};
     for match in (s..delimiter):gmatch("(.-)"..delimiter) do
-        table_insert(result, match);
+        table.insert(result, match);
     end
     return result
 end
