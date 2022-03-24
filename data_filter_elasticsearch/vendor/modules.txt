@@ -1,20 +1,28 @@
+# github.com/aquasecurity/esquery v0.2.0
+github.com/aquasecurity/esquery
 # github.com/dchest/siphash v1.2.0
 github.com/dchest/siphash
+# github.com/elastic/elastic-transport-go/v8 v8.0.0-20211216131617-bbee439d559c
+github.com/elastic/elastic-transport-go/v8/elastictransport
+github.com/elastic/elastic-transport-go/v8/elastictransport/version
+# github.com/elastic/go-elasticsearch/v7 v7.6.0
+github.com/elastic/go-elasticsearch/v7
+github.com/elastic/go-elasticsearch/v7/esapi
+github.com/elastic/go-elasticsearch/v7/estransport
+github.com/elastic/go-elasticsearch/v7/internal/version
+# github.com/elastic/go-elasticsearch/v8 v8.0.0-20220323094151-326dfc11acad
+github.com/elastic/go-elasticsearch/v8
+github.com/elastic/go-elasticsearch/v8/esapi
+github.com/elastic/go-elasticsearch/v8/esutil
+github.com/elastic/go-elasticsearch/v8/internal/version
+# github.com/fatih/structs v1.1.0
+github.com/fatih/structs
 # github.com/ghodss/yaml v1.0.0
 github.com/ghodss/yaml
 # github.com/gorilla/context v1.1.1
 github.com/gorilla/context
 # github.com/gorilla/mux v1.6.2
 github.com/gorilla/mux
-# github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329
-github.com/mailru/easyjson
-github.com/mailru/easyjson/buffer
-github.com/mailru/easyjson/jlexer
-github.com/mailru/easyjson/jwriter
-# github.com/olivere/elastic v6.2.6+incompatible
-github.com/olivere/elastic
-github.com/olivere/elastic/config
-github.com/olivere/elastic/uritemplates
 # github.com/open-policy-agent/opa v0.9.2-0.20180920203641-98ede92df8ef
 github.com/open-policy-agent/opa/ast
 github.com/open-policy-agent/opa/metrics
