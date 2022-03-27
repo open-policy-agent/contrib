@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aquasecurity/esquery"
+	elastic "github.com/elastic/go-elasticsearch/v8"
+
 	"github.com/gorilla/mux"
-	"github.com/olivere/elastic"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/opa"
 )
@@ -115,16 +117,16 @@ func queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
 	return opa.Compile(r.Context(), input, module)
 }
 
-func combineQuery(queryFromHandler elastic.Query, queryFromOpa elastic.Query) elastic.Query {
-	var combinedQuery elastic.Query = queryFromHandler
+func combineQuery(queryFromHandler esquery.Mappable, queryFromOpa esquery.Mappable) esquery.Mappable {
+	var combinedQuery = queryFromHandler
 	if queryFromOpa != nil {
-		queries := []elastic.Query{queryFromOpa, queryFromHandler}
+		queries := []esquery.Mappable{queryFromOpa, queryFromHandler}
 		combinedQuery = es.GenerateBoolFilterQuery(queries)
 	}
 	return combinedQuery
 }
 
-func queryEs(ctx context.Context, client *elastic.Client, index string, query elastic.Query, w http.ResponseWriter) {
+func queryEs(ctx context.Context, client *elastic.Client, index string, query esquery.Mappable, w http.ResponseWriter) {
 	searchResult, err := es.ExecuteEsSearch(ctx, client, index, query)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, apiCodeInternalError, err)

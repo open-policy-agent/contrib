@@ -5,11 +5,17 @@
 package es
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/olivere/elastic"
+	"github.com/aquasecurity/esquery"
+	elastic "github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esutil"
+	"io"
+	"log"
+	"strings"
+	"time"
 )
 
 // Post is a structure used for serializing/deserializing data in Elasticsearch.
@@ -56,6 +62,27 @@ type AuthorBioData struct {
 	City    string `json:"city"`
 }
 
+// InnerHit is a single search result hit
+type InnerHit struct {
+	Source Post `json:"_source"`
+}
+
+// Total number of search result hits
+type Total struct {
+	Value int `json:"value"`
+}
+
+// Hits are the search result hits + metadata like total hits number
+type Hits struct {
+	Hits  []InnerHit `json:"hits"`
+	Total Total      `json:"total"`
+}
+
+// SearchResult is Elasticsearch's search query result
+type SearchResult struct {
+	Hits Hits `json:"hits"`
+}
+
 const mapping = `
 {
 	"settings":{
@@ -63,91 +90,89 @@ const mapping = `
 		"number_of_replicas": 0
 	},
 	"mappings":{
-		"_doc":{
-			"properties": {
-				"id": {
-					"type": "keyword"
-				},
-				"author": {
-					"type": "keyword"
-				},
-				"message": {
-					"type": "text",
-					"fields": {
-						"raw": {
-							"type": "keyword"
-						}
-					}
-				},
-				"department": {
-					"type": "keyword"
-				},
-				"email": {
-					"type": "keyword"
-				},
-				"clearance": {
-					"type": "integer"
-				},
-				"action": {
-					"type": "keyword"
-				},
-				"resource": {
-					"type": "keyword"
-				},
-				"conditions": {
-					"type": "nested",
-					"properties": {
-						"type": {
-							"type": "keyword"
-						},
-						"field": {
-							"type": "keyword"
-						},
-						"value": {
-							"type": "keyword"
-						}
-					}
-				},
-				"likes": {
-					"type": "nested",
-					"properties": {
-						"name": {
-							"type": "keyword"
-						}
-					}
-				},
-				"followers": {
-					"type": "nested",
-					"properties": {
-						"info": {
-							"type": "nested",
-							"properties": {
-								"first": {"type": "keyword"},
-								"last":  {"type": "keyword"}
-							}
-						}
-					}
-				},
-				"stats": {
-					"type": "nested",
-					"properties": {
-						"authorstat": {
-							"type": "nested",
-							"properties": {
-								"authorbio": {
-									"type": "nested",
-									"properties": {
-										"country": {"type": "keyword"},
-										"state":   {"type": "keyword"},
-										"city":    {"type": "keyword"}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+		 "properties": {
+			 "id": {
+				 "type": "keyword"
+			 },
+			 "author": {
+				 "type": "keyword"
+			 },
+			 "message": {
+				 "type": "text",
+				 "fields": {
+					  "raw": {
+						  "type": "keyword"
+					  }
+				 }
+			 },
+			 "department": {
+				 "type": "keyword"
+			 },
+			 "email": {
+				 "type": "keyword"
+			 },
+			 "clearance": {
+				 "type": "integer"
+			 },
+			 "action": {
+				 "type": "keyword"
+			 },
+			 "resource": {
+				 "type": "keyword"
+			 },
+			 "conditions": {
+				 "type": "nested",
+				 "properties": {
+					  "type": {
+						  "type": "keyword"
+					  },
+					  "field": {
+						  "type": "keyword"
+					  },
+					  "value": {
+						  "type": "keyword"
+					  }
+				 }
+			 },
+			 "likes": {
+				 "type": "nested",
+				 "properties": {
+					  "name": {
+						  "type": "keyword"
+					  }
+				 }
+			 },
+			 "followers": {
+				 "type": "nested",
+				 "properties": {
+					  "info": {
+						  "type": "nested",
+						  "properties": {
+							  "first": {"type": "keyword"},
+							  "last":  {"type": "keyword"}
+						  }
+					  }
+				 }
+			 },
+			 "stats": {
+				 "type": "nested",
+				 "properties": {
+					  "authorstat": {
+						  "type": "nested",
+						  "properties": {
+							  "authorbio": {
+								   "type": "nested",
+								   "properties": {
+									   "country": {"type": "keyword"},
+									   "state":   {"type": "keyword"},
+									   "city":    {"type": "keyword"}
+								   }
+							  }
+						  }
+					  }
+				 }
+			 }
+		 }
 	}
 }`
 
@@ -172,7 +197,7 @@ func NewPost(id, author, message, department, email string, clearance int, actio
 
 // NewESClient returns an Elasticsearch client.
 func NewESClient() (*elastic.Client, error) {
-	return elastic.NewClient()
+	return elastic.NewDefaultClient()
 }
 
 // GetIndexMapping returns Elasticsearch mapping.
@@ -183,138 +208,188 @@ func GetIndexMapping() string {
 // Elasticsearch queries
 
 // GenerateTermQuery returns an ES Term Query.
-func GenerateTermQuery(fieldName string, fieldValue interface{}) *elastic.TermQuery {
-	return elastic.NewTermQuery(fieldName, fieldValue).QueryName("TermQuery")
+func GenerateTermQuery(fieldName string, fieldValue interface{}) *esquery.TermQuery {
+	return esquery.Term(fieldName, fieldValue)
 
 }
 
 // GenerateNestedQuery returns an ES Nested Query.
-func GenerateNestedQuery(path string, query elastic.Query) *elastic.NestedQuery {
-	return elastic.NewNestedQuery(path, query).QueryName("NestedQuery").IgnoreUnmapped(true)
-
+func GenerateNestedQuery(path string, query esquery.Mappable) *esquery.CustomQueryMap {
+	return esquery.CustomQuery(map[string]interface{}{"nested": map[string]interface{}{
+		"path":  path,
+		"query": query.Map()}})
 }
 
 // GenerateBoolFilterQuery returns an ES Filter Bool Query.
-func GenerateBoolFilterQuery(filters []elastic.Query) *elastic.BoolQuery {
-	q := elastic.NewBoolQuery()
+func GenerateBoolFilterQuery(filters []esquery.Mappable) *esquery.BoolQuery {
+	q := esquery.Bool()
 	for _, filter := range filters {
 		q = q.Filter(filter)
 	}
-	q = q.QueryName("BoolFilterQuery")
 	return q
 
 }
 
 // GenerateBoolShouldQuery returns an ES Should Bool Query.
-func GenerateBoolShouldQuery(queries []elastic.Query) *elastic.BoolQuery {
-	q := elastic.NewBoolQuery().QueryName("BoolShouldQuery")
+func GenerateBoolShouldQuery(queries []esquery.Mappable) *esquery.BoolQuery {
+	q := esquery.Bool()
 	for _, query := range queries {
 		q = q.Should(query)
 	}
 	return q
+
 }
 
 // GenerateBoolMustNotQuery returns an ES Must Not Bool Query.
-func GenerateBoolMustNotQuery(fieldName string, fieldValue interface{}) *elastic.BoolQuery {
-	q := elastic.NewBoolQuery().QueryName("BoolMustNotQuery")
-	q = q.MustNot(elastic.NewTermQuery(fieldName, fieldValue))
+func GenerateBoolMustNotQuery(fieldName string, fieldValue interface{}) *esquery.BoolQuery {
+	q := esquery.Bool()
+	q = q.MustNot(esquery.Term(fieldName, fieldValue))
 	return q
+
 }
 
 // GenerateMatchAllQuery returns an ES MatchAll Query.
-func GenerateMatchAllQuery() *elastic.MatchAllQuery {
-	return elastic.NewMatchAllQuery().QueryName("MatchAllQuery")
+func GenerateMatchAllQuery() *esquery.MatchAllQuery {
+	return esquery.MatchAll()
 }
 
 // GenerateMatchQuery returns an ES Match Query.
-func GenerateMatchQuery(fieldName string, fieldValue interface{}) *elastic.MatchQuery {
-	return elastic.NewMatchQuery(fieldName, fieldValue).QueryName("MatchQuery")
+func GenerateMatchQuery(fieldName string, fieldValue interface{}) *esquery.MatchQuery {
+	return esquery.Match(fieldName, fieldValue)
 }
 
 // GenerateQueryStringQuery returns an ES Query String Query.
-func GenerateQueryStringQuery(fieldName string, fieldValue interface{}) *elastic.QueryStringQuery {
-	queryString := fmt.Sprintf("*%s*", fieldValue)
-	q := elastic.NewQueryStringQuery(queryString).QueryName("QueryStringQuery")
-	q = q.DefaultField(fieldName)
-	return q
+func GenerateQueryStringQuery(fieldName string, fieldValue interface{}) *esquery.CustomQueryMap {
+	return esquery.CustomQuery(map[string]interface{}{"query_string": map[string]interface{}{
+		"query":         fmt.Sprintf("*%s*", fieldValue),
+		"default_field": fieldName}})
 }
 
 // GenerateRegexpQuery returns an ES Regexp Query.
-func GenerateRegexpQuery(fieldName string, fieldValue interface{}) *elastic.RegexpQuery {
-	return elastic.NewRegexpQuery(fieldName, fieldValue.(string))
+func GenerateRegexpQuery(fieldName string, fieldValue interface{}) *esquery.RegexpQuery {
+	return esquery.Regexp(fieldName, fieldValue.(string))
 }
 
 // GenerateRangeQueryLt returns an ES Less Than Range Query.
-func GenerateRangeQueryLt(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Lt(val)
+func GenerateRangeQueryLt(fieldName string, val interface{}) *esquery.RangeQuery {
+	return esquery.Range(fieldName).Lt(val)
 }
 
 // GenerateRangeQueryLte returns an ES Less Than or Equal Range Query.
-func GenerateRangeQueryLte(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Lte(val)
+func GenerateRangeQueryLte(fieldName string, val interface{}) *esquery.RangeQuery {
+	return esquery.Range(fieldName).Lte(val)
 }
 
 // GenerateRangeQueryGt returns an ES Greater Than Range Query.
-func GenerateRangeQueryGt(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Gt(val)
+func GenerateRangeQueryGt(fieldName string, val interface{}) *esquery.RangeQuery {
+	return esquery.Range(fieldName).Gt(val)
 }
 
 // GenerateRangeQueryGte returns an ES Greater Than or Equal Range Query.
-func GenerateRangeQueryGte(fieldName string, val interface{}) *elastic.RangeQuery {
-	return elastic.NewRangeQuery(fieldName).Gte(val)
+func GenerateRangeQueryGte(fieldName string, val interface{}) *esquery.RangeQuery {
+	return esquery.Range(fieldName).Gte(val)
 }
 
 // ExecuteEsSearch executes ES query.
-func ExecuteEsSearch(ctx context.Context, client *elastic.Client, indexName string, query elastic.Query) (*elastic.SearchResult, error) {
-	searchResult, err := client.Search().
-		Index(indexName).
-		Query(query). // specify the query
-		Pretty(true). // pretty print request and response JSON
-		Do(ctx)       // execute
+func ExecuteEsSearch(ctx context.Context, client *elastic.Client, indexName string, query esquery.Mappable) ([]byte, error) {
+	queryStr, err := esquery.Query(query).MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
-	return searchResult, nil
-}
 
-func analyzeSearchResult(searchResult *elastic.SearchResult) {
-
-	if searchResult.Hits.TotalHits > 0 {
-		fmt.Printf("Found a total of %d posts\n", searchResult.Hits.TotalHits)
-
-		// Iterate through results
-		for _, hit := range searchResult.Hits.Hits {
-			// Deserialize hit
-			var t Post
-			err := json.Unmarshal(*hit.Source, &t)
-			if err != nil {
-				panic(err)
-			}
-
-			// Print with post
-			fmt.Printf("\nPost ID: %s\nAuthor: %s\nMessage: %s\nDepartment: %s\nClearance: %d\n", t.ID, t.Author, t.Message, t.Department, t.Clearance)
-		}
-	} else {
-		// No hits
-		fmt.Print("Found no posts\n")
+	searchResult, err := client.Search(
+		client.Search.WithIndex(indexName),
+		client.Search.WithPretty(),
+		client.Search.WithBody(strings.NewReader(string(queryStr))),
+		client.Search.WithContext(ctx))
+	if err != nil {
+		return nil, err
 	}
+	defer searchResult.Body.Close()
+
+	if searchResult.StatusCode != 200 {
+		fmt.Println("Search failed: " + searchResult.String())
+		return nil, err
+	}
+
+	bytes, err := io.ReadAll(searchResult.Body)
+	if err != nil {
+		fmt.Println("Failed reading search result" + searchResult.String())
+		return nil, err
+	}
+	return bytes, nil
 }
 
 // GetPrettyESResult returns formatted ES results.
-func GetPrettyESResult(searchResult *elastic.SearchResult) []Post {
+func GetPrettyESResult(searchResultBytes []byte) []Post {
 
 	result := []Post{}
-	if searchResult.Hits.TotalHits > 0 {
+	var searchResult SearchResult
+	err := json.Unmarshal(searchResultBytes, &searchResult)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(searchResult)
+	if searchResult.Hits.Total.Value > 0 {
 		// Iterate through results
 		for _, hit := range searchResult.Hits.Hits {
-			// Deserialize hit
-			var t Post
-			err := json.Unmarshal(*hit.Source, &t)
-			if err != nil {
-				panic(err)
-			}
-			result = append(result, t)
+			result = append(result, hit.Source)
 		}
 	}
 	return result
+}
+
+// IndexPosts indexes posts to ES.
+func IndexPosts(ctx context.Context, client *elastic.Client, indexName string, posts []*Post) {
+	bi, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
+		Index:         indexName,        // The default index name
+		Client:        client,           // The Elasticsearch client
+		NumWorkers:    3,                // The number of worker goroutines
+		FlushBytes:    5e+6,             // The flush threshold in bytes
+		FlushInterval: 30 * time.Second, // The periodic flush interval
+	})
+	if err != nil {
+		log.Fatalf("Error creating the indexer: %s", err)
+	}
+	for _, a := range posts {
+		// Prepare the data payload: encode post to JSON
+		data, err := json.Marshal(a)
+		if err != nil {
+			log.Fatalf("Cannot encode post %s: %s", a.ID, err)
+		}
+		// Add an item to the BulkIndexer
+		err = bi.Add(
+			ctx,
+			esutil.BulkIndexerItem{
+				// Action field configures the operation to perform (index, create, delete, update)
+				Action: "index",
+				// DocumentID is the (optional) document ID
+				DocumentID: a.ID,
+				// Body is an `io.Reader` with the payload
+				Body: bytes.NewReader(data),
+				// OnFailure is called for each failed operation
+				OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, res esutil.BulkIndexerResponseItem, err error) {
+					if err != nil {
+						log.Printf("ERROR: %s", err)
+					} else {
+						log.Printf("ERROR: %s: %s", res.Error.Type, res.Error.Reason)
+					}
+				},
+			},
+		)
+		if err != nil {
+			log.Fatalf("Unexpected error: %s", err)
+			panic(err)
+		}
+	}
+	// Close the indexer
+	if err := bi.Close(context.Background()); err != nil {
+		log.Fatalf("Unexpected error: %s", err)
+		panic(err)
+	}
+	biStats := bi.Stats()
+	if biStats.NumFailed > 0 {
+		log.Printf("Failed to index %d documents", biStats.NumFailed)
+		panic(err)
+	}
 }
