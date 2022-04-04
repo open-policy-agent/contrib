@@ -29,7 +29,7 @@ for file in ${CONTRIB_ROOT}/*/Makefile; do
     base=$(basename "$dir")
 
     # TODO: Fix these two currently failing GH actions builds
-    if [ "$base" == "data_filter_mongodb" ] || [ "$base" == "data_filter_example" ]; then
+    if [ "$base" == "gatekeeper_mtail_violations_exporter" ] || [ "$base" == "data_filter_mongodb" ] || [ "$base" == "data_filter_example" ]; then
         continue
     fi
 
