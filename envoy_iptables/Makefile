@@ -12,5 +12,5 @@ image:
 	docker buildx build --platform=linux/amd64,linux/arm64 -t $(REPOSITORY):latest -t $(REPOSITORY):$(VERSION) .
 
 .PHONY: push
-push: build
+push:
 	docker buildx build --push --platform=linux/amd64,linux/arm64 -t $(REPOSITORY):latest -t $(REPOSITORY):$(VERSION) .
