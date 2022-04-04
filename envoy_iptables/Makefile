@@ -1,5 +1,5 @@
 REPOSITORY := openpolicyagent/proxy_init
-VERSION := v5
+VERSION := v6
 
 .PHONY: all
 all: image
@@ -9,9 +9,8 @@ build: image
 
 .PHONY: image
 image:
-	docker build -t $(REPOSITORY):latest -t $(REPOSITORY):$(VERSION) .
+	docker buildx build --platform=linux/amd64,linux/arm64 -t $(REPOSITORY):latest -t $(REPOSITORY):$(VERSION) .
 
 .PHONY: push
-push: build
-	docker push $(REPOSITORY):$(VERSION)
-	docker push $(REPOSITORY):latest
+push:
+	docker buildx build --push --platform=linux/amd64,linux/arm64 -t $(REPOSITORY):latest -t $(REPOSITORY):$(VERSION) .
