@@ -1,5 +1,5 @@
 REPOSITORY := openpolicyagent/proxy_init
-VERSION := v5
+VERSION := v6
 
 .PHONY: all
 all: image
