@@ -13,7 +13,12 @@ Build the example by running `make build`
 
 ## Running the example
 
-1. Run Elasticsearch. See Elasticsearch's [Installation](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) to get started.
+1. Run Elasticsearch (with security turned off - the example assumes http and default credentials).
+Dockerized example:
+```bash
+docker run -p 9200:9200 -e "xpack.security.enabled=false" -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:8.1.1
+```
+See Elasticsearch's [Installation docs](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) for other methods of installation.
 
 2. Open a new window and start the example server:
 

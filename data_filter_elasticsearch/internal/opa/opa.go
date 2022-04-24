@@ -8,9 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/aquasecurity/esquery"
 	"strings"
 
-	"github.com/olivere/elastic"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
@@ -24,7 +24,7 @@ const defaultQuery = "data.example.allow == true"
 // Result contains ES queries after partially evaluating OPA queries.
 type Result struct {
 	Defined bool
-	Query   elastic.Query
+	Query   esquery.Mappable
 }
 
 // Compile compiles OPA query and partially evaluates it.
@@ -71,9 +71,9 @@ func Compile(ctx context.Context, input map[string]interface{}, policy []byte) (
 
 func processQuery(pq *rego.PartialQueries) (Result, error) {
 
-	queries := []elastic.Query{}
+	queries := make([]esquery.Mappable, 0, 100)
 	for i := range pq.Queries {
-		exprQueries := []elastic.Query{}
+		exprQueries := make([]esquery.Mappable, 0, 100)
 		for _, expr := range pq.Queries[i] {
 			if !expr.IsCall() {
 				continue
@@ -97,11 +97,11 @@ func processQuery(pq *rego.PartialQueries) (Result, error) {
 				}
 			}
 
-			var esQuery elastic.Query
+			var esQuery esquery.Mappable
 
 			if isEqualityOperator(expr.Operator().String()) {
 				// generate ES Term query
-				esQuery = es.GenerateTermQuery(processedTerm[1], value)
+				esQuery = esquery.Term(processedTerm[1], value)
 
 				// check if nested query
 				terms := strings.Split(processedTerm[1], ".")
@@ -135,7 +135,11 @@ func processQuery(pq *rego.PartialQueries) (Result, error) {
 			}
 
 			fmt.Printf("OPA Query #%d: %v\n", i+1, pq.Queries[i])
-			fmt.Printf("ES  Query #%d: %+v\n\n", i+1, esQuery)
+			strEsQuery, err := json.Marshal(esQuery.Map())
+			if err != nil {
+				return Result{}, err
+			}
+			fmt.Printf("ES  Query #%d: %+v\n\n", i+1, string(strEsQuery))
 			exprQueries = append(exprQueries, esQuery)
 		}
 
