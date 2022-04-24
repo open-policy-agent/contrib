@@ -54,6 +54,7 @@ function _M.execute(conf)
     -- input document that will be send to opa
     local input = {
         token = token,
+        headers = ngx.req.get_headers(),
         method = ngx.var.request_method,
         path = ngx.var.upstream_uri,
     }
