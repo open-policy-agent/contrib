@@ -60,6 +60,21 @@ return {
             },
           },
           {
+            document = {
+              type = "record",
+              fields = {
+                {
+                  include_headers = {
+                    type = "array",
+                    elements = {
+                      type = "string"
+                    },
+                  },
+                },
+              },
+            },
+          },
+          {
             policy = {
               type = "record",
               fields = {
