@@ -2,6 +2,8 @@ package topdown
 
 import (
 	"container/list"
+	"fmt"
+	"strings"
 
 	"github.com/open-policy-agent/opa/ast"
 )
@@ -12,12 +14,14 @@ import (
 // namespaced by the binding list they are added with. This means the save set
 // can be shared across queries.
 type saveSet struct {
-	l *list.List
+	instr *Instrumentation
+	l     *list.List
 }
 
-func newSaveSet(ts []*ast.Term, b *bindings) *saveSet {
+func newSaveSet(ts []*ast.Term, b *bindings, instr *Instrumentation) *saveSet {
 	ss := &saveSet{
-		l: list.New(),
+		l:     list.New(),
+		instr: instr,
 	}
 	ss.Push(ts, b)
 	return ss
@@ -36,28 +40,46 @@ func (ss *saveSet) Pop() {
 // prefix with a ref that was added (in either direction).
 func (ss *saveSet) Contains(t *ast.Term, b *bindings) bool {
 	if ss != nil {
-		for el := ss.l.Back(); el != nil; el = el.Prev() {
-			if el.Value.(*saveSetElem).Contains(t, b) {
-				return true
-			}
+		ss.instr.startTimer(partialOpSaveSetContains)
+		ret := ss.contains(t, b)
+		ss.instr.stopTimer(partialOpSaveSetContains)
+		return ret
+	}
+	return false
+}
+
+func (ss *saveSet) contains(t *ast.Term, b *bindings) bool {
+	for el := ss.l.Back(); el != nil; el = el.Prev() {
+		if el.Value.(*saveSetElem).Contains(t, b) {
+			return true
 		}
 	}
 	return false
 }
 
-// ContainsRecursive retruns true if the term t is or contains a term that is
+// ContainsRecursive returns true if the term t is or contains a term that is
 // contained in the save set. This function will close over the binding list
 // when it encounters vars.
 func (ss *saveSet) ContainsRecursive(t *ast.Term, b *bindings) bool {
-	found := false
+	if ss != nil {
+		ss.instr.startTimer(partialOpSaveSetContainsRec)
+		ret := ss.containsrec(t, b)
+		ss.instr.stopTimer(partialOpSaveSetContainsRec)
+		return ret
+	}
+	return false
+}
+
+func (ss *saveSet) containsrec(t *ast.Term, b *bindings) bool {
+	var found bool
 	ast.WalkTerms(t, func(x *ast.Term) bool {
 		if _, ok := x.Value.(ast.Var); ok {
 			x1, b1 := b.apply(x)
 			if x1 != x || b1 != b {
-				if ss.ContainsRecursive(x1, b1) {
+				if ss.containsrec(x1, b1) {
 					found = true
 				}
-			} else if ss.Contains(x1, b1) {
+			} else if ss.contains(x1, b1) {
 				found = true
 			}
 		}
@@ -77,6 +99,16 @@ func (ss *saveSet) Vars(caller *bindings) ast.VarSet {
 		}
 	}
 	return result
+}
+
+func (ss *saveSet) String() string {
+	var buf []string
+
+	for x := ss.l.Front(); x != nil; x = x.Next() {
+		buf = append(buf, x.Value.(*saveSetElem).String())
+	}
+
+	return "(" + strings.Join(buf, " ") + ")"
 }
 
 type saveSetElem struct {
@@ -121,6 +153,10 @@ func (sse *saveSetElem) Contains(t *ast.Term, b *bindings) bool {
 		return sse.containsVar(other[0], b)
 	}
 	return false
+}
+
+func (sse *saveSetElem) String() string {
+	return fmt.Sprintf("(refs: %v, vars: %v, b: %v)", sse.refs, sse.vars, sse.b)
 }
 
 func (sse *saveSetElem) containsVar(t *ast.Term, b *bindings) bool {
@@ -279,4 +315,113 @@ func (s *saveSupport) Insert(path ast.Ref, rule *ast.Rule) {
 	}
 	rule.Module = module
 	module.Rules = append(module.Rules, rule)
+}
+
+// saveRequired returns true if the statement x will result in some expressions
+// being saved. This check allows the evaluator to evaluate statements
+// completely during partial evaluation as long as they do not depend on any
+// kind of unknown value or statements that would generate saves.
+func saveRequired(c *ast.Compiler, ic *inliningControl, icIgnoreInternal bool, ss *saveSet, b *bindings, x interface{}, rec bool) bool {
+
+	var found bool
+
+	vis := ast.NewGenericVisitor(func(node interface{}) bool {
+		if found {
+			return found
+		}
+		switch node := node.(type) {
+		case *ast.Expr:
+			found = len(node.With) > 0 || ignoreExprDuringPartial(node)
+		case *ast.Term:
+			switch v := node.Value.(type) {
+			case ast.Var:
+				// Variables only need to be tested in the node from call site
+				// because once traversal recurses into a rule existing unknown
+				// variables are out-of-scope.
+				if !rec && ss.ContainsRecursive(node, b) {
+					found = true
+				}
+			case ast.Ref:
+				if ss.Contains(node, b) {
+					found = true
+				} else if ic.Disabled(v.ConstantPrefix(), icIgnoreInternal) {
+					found = true
+				} else {
+					for _, rule := range c.GetRulesDynamicWithOpts(v, ast.RulesOptions{IncludeHiddenModules: false}) {
+						if saveRequired(c, ic, icIgnoreInternal, ss, b, rule, true) {
+							found = true
+							break
+						}
+					}
+				}
+			}
+		}
+		return found
+	})
+
+	vis.Walk(x)
+
+	return found
+}
+
+func ignoreExprDuringPartial(expr *ast.Expr) bool {
+	if !expr.IsCall() {
+		return false
+	}
+
+	bi, ok := ast.BuiltinMap[expr.Operator().String()]
+
+	return ok && ignoreDuringPartial(bi)
+}
+
+func ignoreDuringPartial(bi *ast.Builtin) bool {
+	for _, ignore := range ast.IgnoreDuringPartialEval {
+		if bi == ignore {
+			return true
+		}
+	}
+	return false
+}
+
+type inliningControl struct {
+	shallow bool
+	disable []disableInliningFrame
+}
+
+type disableInliningFrame struct {
+	internal bool
+	refs     []ast.Ref
+}
+
+func (i *inliningControl) PushDisable(refs []ast.Ref, internal bool) {
+	if i == nil {
+		return
+	}
+	i.disable = append(i.disable, disableInliningFrame{
+		internal: internal,
+		refs:     refs,
+	})
+}
+
+func (i *inliningControl) PopDisable() {
+	if i == nil {
+		return
+	}
+	i.disable = i.disable[:len(i.disable)-1]
+}
+
+func (i *inliningControl) Disabled(ref ast.Ref, ignoreInternal bool) bool {
+	if i == nil {
+		return false
+	}
+	for _, frame := range i.disable {
+		if !frame.internal || !ignoreInternal {
+			for _, other := range frame.refs {
+				if other.HasPrefix(ref) || ref.HasPrefix(other) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

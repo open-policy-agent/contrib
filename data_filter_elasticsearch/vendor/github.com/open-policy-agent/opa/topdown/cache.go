@@ -6,6 +6,7 @@ package topdown
 
 import (
 	"github.com/open-policy-agent/opa/ast"
+	"github.com/open-policy-agent/opa/util"
 )
 
 type virtualCache struct {
@@ -14,7 +15,7 @@ type virtualCache struct {
 
 type virtualCacheElem struct {
 	value    *ast.Term
-	children map[ast.Value]*virtualCacheElem
+	children *util.HashMap
 }
 
 func newVirtualCache() *virtualCache {
@@ -34,12 +35,11 @@ func (c *virtualCache) Pop() {
 func (c *virtualCache) Get(ref ast.Ref) *ast.Term {
 	node := c.stack[len(c.stack)-1]
 	for i := 0; i < len(ref); i++ {
-		key := ref[i].Value
-		next := node.children[key]
-		if next == nil {
+		x, ok := node.children.Get(ref[i])
+		if !ok {
 			return nil
 		}
-		node = next
+		node = x.(*virtualCacheElem)
 	}
 	return node.value
 }
@@ -47,21 +47,28 @@ func (c *virtualCache) Get(ref ast.Ref) *ast.Term {
 func (c *virtualCache) Put(ref ast.Ref, value *ast.Term) {
 	node := c.stack[len(c.stack)-1]
 	for i := 0; i < len(ref); i++ {
-		key := ref[i].Value
-		next := node.children[key]
-		if next == nil {
-			next = newVirtualCacheElem()
-			node.children[key] = next
+		x, ok := node.children.Get(ref[i])
+		if ok {
+			node = x.(*virtualCacheElem)
+		} else {
+			next := newVirtualCacheElem()
+			node.children.Put(ref[i], next)
+			node = next
 		}
-		node = next
 	}
 	node.value = value
 }
 
 func newVirtualCacheElem() *virtualCacheElem {
-	return &virtualCacheElem{
-		children: map[ast.Value]*virtualCacheElem{},
-	}
+	return &virtualCacheElem{children: newVirtualCacheHashMap()}
+}
+
+func newVirtualCacheHashMap() *util.HashMap {
+	return util.NewHashMap(func(a, b util.T) bool {
+		return a.(*ast.Term).Equal(b.(*ast.Term))
+	}, func(x util.T) int {
+		return x.(*ast.Term).Hash()
+	})
 }
 
 // baseCache implements a trie structure to cache base documents read out of
@@ -123,4 +130,108 @@ func newBaseCacheElem() *baseCacheElem {
 func (e *baseCacheElem) set(value ast.Value) {
 	e.value = value
 	e.children = map[ast.Value]*baseCacheElem{}
+}
+
+type refStack struct {
+	sl []refStackElem
+}
+
+type refStackElem struct {
+	refs []ast.Ref
+}
+
+func newRefStack() *refStack {
+	return &refStack{}
+}
+
+func (s *refStack) Push(refs []ast.Ref) {
+	s.sl = append(s.sl, refStackElem{refs: refs})
+}
+
+func (s *refStack) Pop() {
+	s.sl = s.sl[:len(s.sl)-1]
+}
+
+func (s *refStack) Prefixed(ref ast.Ref) bool {
+	if s != nil {
+		for i := len(s.sl) - 1; i >= 0; i-- {
+			for j := range s.sl[i].refs {
+				if ref.HasPrefix(s.sl[i].refs[j]) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+type comprehensionCache struct {
+	stack []map[*ast.Term]*comprehensionCacheElem
+}
+
+type comprehensionCacheElem struct {
+	value    *ast.Term
+	children *util.HashMap
+}
+
+func newComprehensionCache() *comprehensionCache {
+	cache := &comprehensionCache{}
+	cache.Push()
+	return cache
+}
+
+func (c *comprehensionCache) Push() {
+	c.stack = append(c.stack, map[*ast.Term]*comprehensionCacheElem{})
+}
+
+func (c *comprehensionCache) Pop() {
+	c.stack = c.stack[:len(c.stack)-1]
+}
+
+func (c *comprehensionCache) Elem(t *ast.Term) (*comprehensionCacheElem, bool) {
+	elem, ok := c.stack[len(c.stack)-1][t]
+	return elem, ok
+}
+
+func (c *comprehensionCache) Set(t *ast.Term, elem *comprehensionCacheElem) {
+	c.stack[len(c.stack)-1][t] = elem
+}
+
+func newComprehensionCacheElem() *comprehensionCacheElem {
+	return &comprehensionCacheElem{children: newComprehensionCacheHashMap()}
+}
+
+func (c *comprehensionCacheElem) Get(key []*ast.Term) *ast.Term {
+	node := c
+	for i := 0; i < len(key); i++ {
+		x, ok := node.children.Get(key[i])
+		if !ok {
+			return nil
+		}
+		node = x.(*comprehensionCacheElem)
+	}
+	return node.value
+}
+
+func (c *comprehensionCacheElem) Put(key []*ast.Term, value *ast.Term) {
+	node := c
+	for i := 0; i < len(key); i++ {
+		x, ok := node.children.Get(key[i])
+		if ok {
+			node = x.(*comprehensionCacheElem)
+		} else {
+			next := newComprehensionCacheElem()
+			node.children.Put(key[i], next)
+			node = next
+		}
+	}
+	node.value = value
+}
+
+func newComprehensionCacheHashMap() *util.HashMap {
+	return util.NewHashMap(func(a, b util.T) bool {
+		return a.(*ast.Term).Equal(b.(*ast.Term))
+	}, func(x util.T) int {
+		return x.(*ast.Term).Hash()
+	})
 }

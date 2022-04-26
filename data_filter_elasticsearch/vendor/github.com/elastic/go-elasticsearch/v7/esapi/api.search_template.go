@@ -1,8 +1,21 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -41,18 +54,19 @@ type SearchTemplateRequest struct {
 
 	Body io.Reader
 
-	AllowNoIndices     *bool
-	ExpandWildcards    string
-	Explain            *bool
-	IgnoreThrottled    *bool
-	IgnoreUnavailable  *bool
-	Preference         string
-	Profile            *bool
-	RestTotalHitsAsInt *bool
-	Routing            []string
-	Scroll             time.Duration
-	SearchType         string
-	TypedKeys          *bool
+	AllowNoIndices        *bool
+	CcsMinimizeRoundtrips *bool
+	ExpandWildcards       string
+	Explain               *bool
+	IgnoreThrottled       *bool
+	IgnoreUnavailable     *bool
+	Preference            string
+	Profile               *bool
+	RestTotalHitsAsInt    *bool
+	Routing               []string
+	Scroll                time.Duration
+	SearchType            string
+	TypedKeys             *bool
 
 	Pretty     bool
 	Human      bool
@@ -73,7 +87,7 @@ func (r SearchTemplateRequest) Do(ctx context.Context, transport Transport) (*Re
 		params map[string]string
 	)
 
-	method = "GET"
+	method = "POST"
 
 	path.Grow(1 + len(strings.Join(r.Index, ",")) + 1 + len(strings.Join(r.DocumentType, ",")) + 1 + len("_search") + 1 + len("template"))
 	if len(r.Index) > 0 {
@@ -93,6 +107,10 @@ func (r SearchTemplateRequest) Do(ctx context.Context, transport Transport) (*Re
 
 	if r.AllowNoIndices != nil {
 		params["allow_no_indices"] = strconv.FormatBool(*r.AllowNoIndices)
+	}
+
+	if r.CcsMinimizeRoundtrips != nil {
+		params["ccs_minimize_roundtrips"] = strconv.FormatBool(*r.CcsMinimizeRoundtrips)
 	}
 
 	if r.ExpandWildcards != "" {
@@ -231,6 +249,14 @@ func (f SearchTemplate) WithDocumentType(v ...string) func(*SearchTemplateReques
 func (f SearchTemplate) WithAllowNoIndices(v bool) func(*SearchTemplateRequest) {
 	return func(r *SearchTemplateRequest) {
 		r.AllowNoIndices = &v
+	}
+}
+
+// WithCcsMinimizeRoundtrips - indicates whether network round-trips should be minimized as part of cross-cluster search requests execution.
+//
+func (f SearchTemplate) WithCcsMinimizeRoundtrips(v bool) func(*SearchTemplateRequest) {
+	return func(r *SearchTemplateRequest) {
+		r.CcsMinimizeRoundtrips = &v
 	}
 }
 

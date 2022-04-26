@@ -1,8 +1,21 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -36,12 +49,13 @@ type CatAliases func(o ...func(*CatAliasesRequest)) (*Response, error)
 type CatAliasesRequest struct {
 	Name []string
 
-	Format string
-	H      []string
-	Help   *bool
-	Local  *bool
-	S      []string
-	V      *bool
+	ExpandWildcards string
+	Format          string
+	H               []string
+	Help            *bool
+	Local           *bool
+	S               []string
+	V               *bool
 
 	Pretty     bool
 	Human      bool
@@ -75,6 +89,10 @@ func (r CatAliasesRequest) Do(ctx context.Context, transport Transport) (*Respon
 	}
 
 	params = make(map[string]string)
+
+	if r.ExpandWildcards != "" {
+		params["expand_wildcards"] = r.ExpandWildcards
+	}
 
 	if r.Format != "" {
 		params["format"] = r.Format
@@ -172,6 +190,14 @@ func (f CatAliases) WithContext(v context.Context) func(*CatAliasesRequest) {
 func (f CatAliases) WithName(v ...string) func(*CatAliasesRequest) {
 	return func(r *CatAliasesRequest) {
 		r.Name = v
+	}
+}
+
+// WithExpandWildcards - whether to expand wildcard expression to concrete indices that are open, closed or both..
+//
+func (f CatAliases) WithExpandWildcards(v string) func(*CatAliasesRequest) {
+	return func(r *CatAliasesRequest) {
+		r.ExpandWildcards = v
 	}
 }
 

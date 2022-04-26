@@ -1,14 +1,26 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -28,15 +40,13 @@ func newSnapshotCleanupRepositoryFunc(t Transport) SnapshotCleanupRepository {
 
 // SnapshotCleanupRepository removes stale data from repository.
 //
-// See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/modules-snapshots.html.
+// See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/clean-up-snapshot-repo-api.html.
 //
 type SnapshotCleanupRepository func(repository string, o ...func(*SnapshotCleanupRepositoryRequest)) (*Response, error)
 
 // SnapshotCleanupRepositoryRequest configures the Snapshot Cleanup Repository API request.
 //
 type SnapshotCleanupRepositoryRequest struct {
-	Body io.Reader
-
 	Repository string
 
 	MasterTimeout time.Duration
@@ -97,7 +107,7 @@ func (r SnapshotCleanupRepositoryRequest) Do(ctx context.Context, transport Tran
 		params["filter_path"] = strings.Join(r.FilterPath, ",")
 	}
 
-	req, err := newRequest(method, path.String(), r.Body)
+	req, err := newRequest(method, path.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +118,6 @@ func (r SnapshotCleanupRepositoryRequest) Do(ctx context.Context, transport Tran
 			q.Set(k, v)
 		}
 		req.URL.RawQuery = q.Encode()
-	}
-
-	if r.Body != nil {
-		req.Header[headerContentType] = headerContentTypeJSON
 	}
 
 	if len(r.Header) > 0 {
@@ -149,14 +155,6 @@ func (r SnapshotCleanupRepositoryRequest) Do(ctx context.Context, transport Tran
 func (f SnapshotCleanupRepository) WithContext(v context.Context) func(*SnapshotCleanupRepositoryRequest) {
 	return func(r *SnapshotCleanupRepositoryRequest) {
 		r.ctx = v
-	}
-}
-
-// WithBody - .
-//
-func (f SnapshotCleanupRepository) WithBody(v io.Reader) func(*SnapshotCleanupRepositoryRequest) {
-	return func(r *SnapshotCleanupRepositoryRequest) {
-		r.Body = v
 	}
 }
 

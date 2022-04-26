@@ -1,14 +1,28 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -26,6 +40,8 @@ func newTasksCancelFunc(t Transport) TasksCancel {
 
 // TasksCancel cancels a task, if it can be cancelled through an API.
 //
+// This API is experimental.
+//
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/master/tasks.html.
 //
 type TasksCancel func(o ...func(*TasksCancelRequest)) (*Response, error)
@@ -35,9 +51,10 @@ type TasksCancel func(o ...func(*TasksCancelRequest)) (*Response, error)
 type TasksCancelRequest struct {
 	TaskID string
 
-	Actions      []string
-	Nodes        []string
-	ParentTaskID string
+	Actions           []string
+	Nodes             []string
+	ParentTaskID      string
+	WaitForCompletion *bool
 
 	Pretty     bool
 	Human      bool
@@ -82,6 +99,10 @@ func (r TasksCancelRequest) Do(ctx context.Context, transport Transport) (*Respo
 
 	if r.ParentTaskID != "" {
 		params["parent_task_id"] = r.ParentTaskID
+	}
+
+	if r.WaitForCompletion != nil {
+		params["wait_for_completion"] = strconv.FormatBool(*r.WaitForCompletion)
 	}
 
 	if r.Pretty {
@@ -180,6 +201,14 @@ func (f TasksCancel) WithNodes(v ...string) func(*TasksCancelRequest) {
 func (f TasksCancel) WithParentTaskID(v string) func(*TasksCancelRequest) {
 	return func(r *TasksCancelRequest) {
 		r.ParentTaskID = v
+	}
+}
+
+// WithWaitForCompletion - should the request block until the cancellation of the task and its descendant tasks is completed. defaults to false.
+//
+func (f TasksCancel) WithWaitForCompletion(v bool) func(*TasksCancelRequest) {
+	return func(r *TasksCancelRequest) {
+		r.WaitForCompletion = &v
 	}
 }
 

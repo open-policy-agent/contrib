@@ -7,6 +7,11 @@ package metrics
 
 import (
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	go_metrics "github.com/rcrowley/go-metrics"
@@ -14,17 +19,32 @@ import (
 
 // Well-known metric names.
 const (
-	RegoQueryCompile  = "rego_query_compile"
-	RegoQueryEval     = "rego_query_eval"
-	RegoQueryParse    = "rego_query_parse"
-	RegoModuleParse   = "rego_module_parse"
-	RegoModuleCompile = "rego_module_compile"
-	RegoPartialEval   = "rego_partial_eval"
+	BundleRequest       = "bundle_request"
+	ServerHandler       = "server_handler"
+	ServerQueryCacheHit = "server_query_cache_hit"
+	SDKDecisionEval     = "sdk_decision_eval"
+	RegoQueryCompile    = "rego_query_compile"
+	RegoQueryEval       = "rego_query_eval"
+	RegoQueryParse      = "rego_query_parse"
+	RegoModuleParse     = "rego_module_parse"
+	RegoDataParse       = "rego_data_parse"
+	RegoModuleCompile   = "rego_module_compile"
+	RegoPartialEval     = "rego_partial_eval"
+	RegoInputParse      = "rego_input_parse"
+	RegoLoadFiles       = "rego_load_files"
+	RegoLoadBundles     = "rego_load_bundles"
+	RegoExternalResolve = "rego_external_resolve"
 )
+
+// Info contains attributes describing the underlying metrics provider.
+type Info struct {
+	Name string `json:"name"` // name is a unique human-readable identifier for the provider.
+}
 
 // Metrics defines the interface for a collection of performance metrics in the
 // policy engine.
 type Metrics interface {
+	Info() Info
 	Timer(name string) Timer
 	Histogram(name string) Histogram
 	Counter(name string) Counter
@@ -33,7 +53,12 @@ type Metrics interface {
 	json.Marshaler
 }
 
+type TimerMetrics interface {
+	Timers() map[string]interface{}
+}
+
 type metrics struct {
+	mtx        sync.Mutex
 	timers     map[string]Timer
 	histograms map[string]Histogram
 	counters   map[string]Counter
@@ -46,11 +71,48 @@ func New() Metrics {
 	return m
 }
 
+type metric struct {
+	Key   string
+	Value interface{}
+}
+
+func (*metrics) Info() Info {
+	return Info{
+		Name: "<built-in>",
+	}
+}
+
+func (m *metrics) String() string {
+
+	all := m.All()
+	sorted := make([]metric, 0, len(all))
+
+	for key, value := range all {
+		sorted = append(sorted, metric{
+			Key:   key,
+			Value: value,
+		})
+	}
+
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Key < sorted[j].Key
+	})
+
+	buf := make([]string, len(sorted))
+	for i := range sorted {
+		buf[i] = fmt.Sprintf("%v:%v", sorted[i].Key, sorted[i].Value)
+	}
+
+	return strings.Join(buf, " ")
+}
+
 func (m *metrics) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.All())
 }
 
 func (m *metrics) Timer(name string) Timer {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	t, ok := m.timers[name]
 	if !ok {
 		t = &timer{}
@@ -60,6 +122,8 @@ func (m *metrics) Timer(name string) Timer {
 }
 
 func (m *metrics) Histogram(name string) Histogram {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	h, ok := m.histograms[name]
 	if !ok {
 		h = newHistogram()
@@ -69,9 +133,11 @@ func (m *metrics) Histogram(name string) Histogram {
 }
 
 func (m *metrics) Counter(name string) Counter {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	c, ok := m.counters[name]
 	if !ok {
-		zero := counter(0)
+		zero := counter{}
 		c = &zero
 		m.counters[name] = c
 	}
@@ -79,6 +145,8 @@ func (m *metrics) Counter(name string) Counter {
 }
 
 func (m *metrics) All() map[string]interface{} {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	result := map[string]interface{}{}
 	for name, timer := range m.timers {
 		result[m.formatKey(name, timer)] = timer.Value()
@@ -92,7 +160,19 @@ func (m *metrics) All() map[string]interface{} {
 	return result
 }
 
+func (m *metrics) Timers() map[string]interface{} {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	ts := map[string]interface{}{}
+	for n, t := range m.timers {
+		ts[m.formatKey(n, t)] = t.Value()
+	}
+	return ts
+}
+
 func (m *metrics) Clear() {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.timers = map[string]Timer{}
 	m.histograms = map[string]Histogram{}
 	m.counters = map[string]Counter{}
@@ -121,25 +201,32 @@ type Timer interface {
 }
 
 type timer struct {
+	mtx   sync.Mutex
 	start time.Time
 	value int64
 }
 
 func (t *timer) Start() {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
 	t.start = time.Now()
 }
 
 func (t *timer) Stop() int64 {
-	delta := time.Now().Sub(t.start).Nanoseconds()
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+	delta := time.Since(t.start).Nanoseconds()
 	t.value += delta
 	return delta
 }
 
-func (t timer) Value() interface{} {
+func (t *timer) Value() interface{} {
 	return t.Int64()
 }
 
-func (t timer) Int64() int64 {
+func (t *timer) Int64() int64 {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
 	return t.value
 }
 
@@ -150,7 +237,7 @@ type Histogram interface {
 }
 
 type histogram struct {
-	hist go_metrics.Histogram
+	hist go_metrics.Histogram // is thread-safe because of the underlying ExpDecaySample
 }
 
 func newHistogram() Histogram {
@@ -197,14 +284,29 @@ func (h *histogram) Value() interface{} {
 type Counter interface {
 	Value() interface{}
 	Incr()
+	Add(n uint64)
 }
 
-type counter uint64
+type counter struct {
+	c uint64
+}
 
 func (c *counter) Incr() {
-	*c++
+	atomic.AddUint64(&c.c, 1)
+}
+
+func (c *counter) Add(n uint64) {
+	atomic.AddUint64(&c.c, n)
 }
 
 func (c *counter) Value() interface{} {
-	return *c
+	return atomic.LoadUint64(&c.c)
+}
+
+func Statistics(num ...int64) interface{} {
+	t := newHistogram()
+	for _, n := range num {
+		t.Update(n)
+	}
+	return t.Value()
 }

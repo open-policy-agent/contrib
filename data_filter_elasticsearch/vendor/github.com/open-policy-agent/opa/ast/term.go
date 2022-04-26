@@ -2,99 +2,37 @@
 // Use of this source code is governed by an Apache2
 // license that can be found in the LICENSE file.
 
+// nolint: deadcode // Public API.
 package ast
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math"
+	"math/big"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/dchest/siphash"
-	"github.com/open-policy-agent/opa/util"
+	"github.com/OneOfOne/xxhash"
 	"github.com/pkg/errors"
+
+	"github.com/open-policy-agent/opa/ast/location"
+	"github.com/open-policy-agent/opa/util"
 )
 
-// Location records a position in source code
-type Location struct {
-	Text []byte `json:"-"`    // The original text fragment from the source.
-	File string `json:"file"` // The name of the source file (which may be empty).
-	Row  int    `json:"row"`  // The line in the source.
-	Col  int    `json:"col"`  // The column in the row.
-}
+var errFindNotFound = fmt.Errorf("find: not found")
+
+// Location records a position in source code.
+type Location = location.Location
 
 // NewLocation returns a new Location object.
 func NewLocation(text []byte, file string, row int, col int) *Location {
-	return &Location{Text: text, File: file, Row: row, Col: col}
-}
-
-// Equal checks if two locations are equal to each other.
-func (loc *Location) Equal(other *Location) bool {
-	return bytes.Equal(loc.Text, other.Text) &&
-		loc.File == other.File &&
-		loc.Row == other.Row &&
-		loc.Col == other.Col
-}
-
-// Errorf returns a new error value with a message formatted to include the location
-// info (e.g., line, column, filename, etc.)
-func (loc *Location) Errorf(f string, a ...interface{}) error {
-	return errors.New(loc.Format(f, a...))
-}
-
-// Wrapf returns a new error value that wraps an existing error with a message formatted
-// to include the location info (e.g., line, column, filename, etc.)
-func (loc *Location) Wrapf(err error, f string, a ...interface{}) error {
-	return errors.Wrap(err, loc.Format(f, a...))
-}
-
-// Format returns a formatted string prefixed with the location information.
-func (loc *Location) Format(f string, a ...interface{}) string {
-	if len(loc.File) > 0 {
-		f = fmt.Sprintf("%v:%v: %v", loc.File, loc.Row, f)
-	} else {
-		f = fmt.Sprintf("%v:%v: %v", loc.Row, loc.Col, f)
-	}
-	return fmt.Sprintf(f, a...)
-}
-
-func (loc *Location) String() string {
-	if len(loc.File) > 0 {
-		return fmt.Sprintf("%v:%v", loc.File, loc.Row)
-	}
-	if len(loc.Text) > 0 {
-		return string(loc.Text)
-	}
-	return fmt.Sprintf("%v:%v", loc.Row, loc.Col)
-}
-
-// Compare returns -1, 0, or 1 to indicate if this loc is less than, equal to,
-// or greater than the other. Comparison is performed on the file, row, and
-// column of the Location (but not on the text.)
-func (loc *Location) Compare(other *Location) int {
-	if loc == nil && other == nil {
-		return 0
-	} else if loc == nil {
-		return 1
-	} else if other == nil {
-		return -1
-	} else if loc.File < other.File {
-		return -1
-	} else if loc.File > other.File {
-		return 1
-	} else if loc.Row < other.Row {
-		return -1
-	} else if loc.Row > other.Row {
-		return 1
-	} else if loc.Col < other.Col {
-		return -1
-	} else if loc.Col > other.Col {
-		return 1
-	}
-	return 0
+	return location.NewLocation(text, file, row, col)
 }
 
 // Value declares the common interface for all Term values. Every kind of Term value
@@ -124,6 +62,8 @@ func InterfaceToValue(x interface{}) (Value, error) {
 		return Number(x), nil
 	case int64:
 		return int64Number(x), nil
+	case uint64:
+		return uint64Number(x), nil
 	case float64:
 		return floatNumber(x), nil
 	case int:
@@ -131,17 +71,17 @@ func InterfaceToValue(x interface{}) (Value, error) {
 	case string:
 		return String(x), nil
 	case []interface{}:
-		r := Array{}
-		for _, e := range x {
+		r := make([]*Term, len(x))
+		for i, e := range x {
 			e, err := InterfaceToValue(e)
 			if err != nil {
 				return nil, err
 			}
-			r = append(r, &Term{Value: e})
+			r[i] = &Term{Value: e}
 		}
-		return r, nil
+		return NewArray(r...), nil
 	case map[string]interface{}:
-		r := NewObject()
+		r := newobject(len(x))
 		for k, v := range x {
 			k, err := InterfaceToValue(k)
 			if err != nil {
@@ -155,7 +95,7 @@ func InterfaceToValue(x interface{}) (Value, error) {
 		}
 		return r, nil
 	case map[string]string:
-		r := NewObject()
+		r := newobject(len(x))
 		for k, v := range x {
 			k, err := InterfaceToValue(k)
 			if err != nil {
@@ -169,18 +109,36 @@ func InterfaceToValue(x interface{}) (Value, error) {
 		}
 		return r, nil
 	default:
-		return nil, fmt.Errorf("ast: illegal value: %T", x)
+		ptr := util.Reference(x)
+		if err := util.RoundTrip(ptr); err != nil {
+			return nil, fmt.Errorf("ast: interface conversion: %w", err)
+		}
+		return InterfaceToValue(*ptr)
 	}
+}
+
+// ValueFromReader returns an AST value from a JSON serialized value in the reader.
+func ValueFromReader(r io.Reader) (Value, error) {
+	var x interface{}
+	if err := util.NewJSONDecoder(r).Decode(&x); err != nil {
+		return nil, err
+	}
+	return InterfaceToValue(x)
+}
+
+// As converts v into a Go native type referred to by x.
+func As(v Value, x interface{}) error {
+	return util.NewJSONDecoder(bytes.NewBufferString(v.String())).Decode(x)
 }
 
 // Resolver defines the interface for resolving references to native Go values.
 type Resolver interface {
-	Resolve(ref Ref) (value interface{}, err error)
+	Resolve(ref Ref) (interface{}, error)
 }
 
 // ValueResolver defines the interface for resolving references to AST values.
 type ValueResolver interface {
-	Resolve(ref Ref) (value Value, err error)
+	Resolve(ref Ref) (Value, error)
 }
 
 // UnknownValueErr indicates a ValueResolver was unable to resolve a reference
@@ -207,6 +165,10 @@ func (illegalResolver) Resolve(ref Ref) (interface{}, error) {
 // value should not contain any values that require evaluation (e.g., vars,
 // comprehensions, etc.)
 func ValueToInterface(v Value, resolver Resolver) (interface{}, error) {
+	return valueToInterface(v, resolver, JSONOpt{})
+}
+
+func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (interface{}, error) {
 	switch v := v.(type) {
 	case Null:
 		return nil, nil
@@ -216,32 +178,37 @@ func ValueToInterface(v Value, resolver Resolver) (interface{}, error) {
 		return json.Number(v), nil
 	case String:
 		return string(v), nil
-	case Array:
+	case *Array:
 		buf := []interface{}{}
-		for _, x := range v {
-			x1, err := ValueToInterface(x.Value, resolver)
+		for i := 0; i < v.Len(); i++ {
+			x1, err := valueToInterface(v.Elem(i).Value, resolver, opt)
 			if err != nil {
 				return nil, err
 			}
 			buf = append(buf, x1)
 		}
 		return buf, nil
-	case Object:
-		buf := map[string]interface{}{}
+	case *object:
+		buf := make(map[string]interface{}, v.Len())
 		err := v.Iter(func(k, v *Term) error {
-			ki, err := ValueToInterface(k.Value, resolver)
+			ki, err := valueToInterface(k.Value, resolver, opt)
 			if err != nil {
 				return err
 			}
-			asStr, stringKey := ki.(string)
-			if !stringKey {
-				return fmt.Errorf("object value has non-string key (%T)", ki)
+			var str string
+			var ok bool
+			if str, ok = ki.(string); !ok {
+				var buf bytes.Buffer
+				if err := json.NewEncoder(&buf).Encode(ki); err != nil {
+					return err
+				}
+				str = strings.TrimSpace(buf.String())
 			}
-			vi, err := ValueToInterface(v.Value, resolver)
+			vi, err := valueToInterface(v.Value, resolver, opt)
 			if err != nil {
 				return err
 			}
-			buf[asStr] = vi
+			buf[str] = vi
 			return nil
 		})
 		if err != nil {
@@ -250,14 +217,20 @@ func ValueToInterface(v Value, resolver Resolver) (interface{}, error) {
 		return buf, nil
 	case Set:
 		buf := []interface{}{}
-		err := v.Iter(func(x *Term) error {
-			x1, err := ValueToInterface(x.Value, resolver)
+		iter := func(x *Term) error {
+			x1, err := valueToInterface(x.Value, resolver, opt)
 			if err != nil {
 				return err
 			}
 			buf = append(buf, x1)
 			return nil
-		})
+		}
+		var err error
+		if opt.SortSets {
+			err = v.Sorted().Iter(iter)
+		} else {
+			err = v.Iter(iter)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +245,30 @@ func ValueToInterface(v Value, resolver Resolver) (interface{}, error) {
 // JSON returns the JSON representation of v. The value must not contain any
 // refs or terms that require evaluation (e.g., vars, comprehensions, etc.)
 func JSON(v Value) (interface{}, error) {
-	return ValueToInterface(v, illegalResolver{})
+	return JSONWithOpt(v, JSONOpt{})
+}
+
+// JSONOpt defines parameters for AST to JSON conversion.
+type JSONOpt struct {
+	SortSets bool // sort sets before serializing (this makes conversion more expensive)
+}
+
+// JSONWithOpt returns the JSON representation of v. The value must not contain any
+// refs or terms that require evaluation (e.g., vars, comprehensions, etc.)
+func JSONWithOpt(v Value, opt JSONOpt) (interface{}, error) {
+	return valueToInterface(v, illegalResolver{}, opt)
+}
+
+// MustJSON returns the JSON representation of v. The value must not contain any
+// refs or terms that require evaluation (e.g., vars, comprehensions, etc.) If
+// the conversion fails, this function will panic. This function is mostly for
+// test purposes.
+func MustJSON(v Value) interface{} {
+	r, err := JSON(v)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
 
 // MustInterfaceToValue converts a native Go value x to a Value. If the
@@ -332,11 +328,11 @@ func (term *Term) Copy() *Term {
 		cpy.Value = v
 	case Ref:
 		cpy.Value = v.Copy()
-	case Array:
+	case *Array:
 		cpy.Value = v.Copy()
 	case Set:
 		cpy.Value = v.Copy()
-	case Object:
+	case *object:
 		cpy.Value = v.Copy()
 	case *ArrayComprehension:
 		cpy.Value = v.Copy()
@@ -363,15 +359,33 @@ func (term *Term) Equal(other *Term) bool {
 	if term == other {
 		return true
 	}
+
+	// TODO(tsandall): This early-exit avoids allocations for types that have
+	// Equal() functions that just use == underneath. We should revisit the
+	// other types and implement Equal() functions that do not require
+	// allocations.
+	switch v := term.Value.(type) {
+	case Null:
+		return v.Equal(other.Value)
+	case Boolean:
+		return v.Equal(other.Value)
+	case Number:
+		return v.Equal(other.Value)
+	case String:
+		return v.Equal(other.Value)
+	case Var:
+		return v.Equal(other.Value)
+	}
+
 	return term.Value.Compare(other.Value) == 0
 }
 
 // Get returns a value referred to by name from the term.
 func (term *Term) Get(name *Term) *Term {
 	switch v := term.Value.(type) {
-	case Array:
+	case *Array:
 		return v.Get(name)
-	case Object:
+	case *object:
 		return v.Get(name)
 	case Set:
 		if v.Contains(name) {
@@ -381,12 +395,13 @@ func (term *Term) Get(name *Term) *Term {
 	return nil
 }
 
-// Hash returns the hash code of the Term's value.
+// Hash returns the hash code of the Term's Value. Its Location
+// is ignored.
 func (term *Term) Hash() int {
 	return term.Value.Hash()
 }
 
-// IsGround returns true if this terms' Value is ground.
+// IsGround returns true if this term's Value is ground.
 func (term *Term) IsGround() bool {
 	return term.Value.IsGround()
 }
@@ -424,14 +439,14 @@ func (term *Term) UnmarshalJSON(bs []byte) error {
 // Vars returns a VarSet with variables contained in this term.
 func (term *Term) Vars() VarSet {
 	vis := &VarVisitor{vars: VarSet{}}
-	Walk(vis, term)
+	vis.Walk(term)
 	return vis.vars
 }
 
 // IsConstant returns true if the AST value is constant.
 func IsConstant(v Value) bool {
 	found := false
-	Walk(&GenericVisitor{
+	vis := GenericVisitor{
 		func(x interface{}) bool {
 			switch x.(type) {
 			case Var, Ref, *ArrayComprehension, *ObjectComprehension, *SetComprehension, Call:
@@ -440,7 +455,8 @@ func IsConstant(v Value) bool {
 			}
 			return false
 		},
-	}, v)
+	}
+	vis.Walk(v)
 	return !found
 }
 
@@ -456,7 +472,7 @@ func IsComprehension(x Value) bool {
 // ContainsRefs returns true if the Value v contains refs.
 func ContainsRefs(v interface{}) bool {
 	found := false
-	WalkRefs(v, func(r Ref) bool {
+	WalkRefs(v, func(Ref) bool {
 		found = true
 		return found
 	})
@@ -469,6 +485,20 @@ func ContainsComprehensions(v interface{}) bool {
 	WalkClosures(v, func(x interface{}) bool {
 		switch x.(type) {
 		case *ArrayComprehension, *ObjectComprehension, *SetComprehension:
+			found = true
+			return found
+		}
+		return found
+	})
+	return found
+}
+
+// ContainsClosures returns true if the Value v contains closures.
+func ContainsClosures(v interface{}) bool {
+	found := false
+	WalkClosures(v, func(x interface{}) bool {
+		switch x.(type) {
+		case *ArrayComprehension, *ObjectComprehension, *SetComprehension, *Every:
 			found = true
 			return found
 		}
@@ -521,7 +551,7 @@ func (null Null) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return null, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code for the Value.
@@ -530,7 +560,7 @@ func (null Null) Hash() int {
 }
 
 // IsGround always returns true.
-func (null Null) IsGround() bool {
+func (Null) IsGround() bool {
 	return true
 }
 
@@ -567,7 +597,7 @@ func (bol Boolean) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return bol, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code for the Value.
@@ -579,7 +609,7 @@ func (bol Boolean) Hash() int {
 }
 
 // IsGround always returns true.
-func (bol Boolean) IsGround() bool {
+func (Boolean) IsGround() bool {
 	return true
 }
 
@@ -598,6 +628,11 @@ func NumberTerm(n json.Number) *Term {
 // IntNumberTerm creates a new Term with an integer Number value.
 func IntNumberTerm(i int) *Term {
 	return &Term{Value: Number(strconv.Itoa(i))}
+}
+
+// UIntNumberTerm creates a new Term with an unsigned integer Number value.
+func UIntNumberTerm(u uint64) *Term {
+	return &Term{Value: uint64Number(u)}
 }
 
 // FloatNumberTerm creates a new Term with a floating point Number value.
@@ -627,7 +662,7 @@ func (num Number) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return num, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code for the Value.
@@ -635,7 +670,7 @@ func (num Number) Hash() int {
 	f, err := json.Number(num).Float64()
 	if err != nil {
 		bs := []byte(num)
-		h := siphash.Hash(hashSeed0, hashSeed1, bs)
+		h := xxhash.Checksum64(bs)
 		return int(h)
 	}
 	return int(f)
@@ -643,11 +678,17 @@ func (num Number) Hash() int {
 
 // Int returns the int representation of num if possible.
 func (num Number) Int() (int, bool) {
+	i64, ok := num.Int64()
+	return int(i64), ok
+}
+
+// Int64 returns the int64 representation of num if possible.
+func (num Number) Int64() (int64, bool) {
 	i, err := json.Number(num).Int64()
 	if err != nil {
 		return 0, false
 	}
-	return int(i), true
+	return i, true
 }
 
 // Float64 returns the float64 representation of num if possible.
@@ -660,7 +701,7 @@ func (num Number) Float64() (float64, bool) {
 }
 
 // IsGround always returns true.
-func (num Number) IsGround() bool {
+func (Number) IsGround() bool {
 	return true
 }
 
@@ -679,6 +720,10 @@ func intNumber(i int) Number {
 
 func int64Number(i int64) Number {
 	return Number(strconv.FormatInt(i, 10))
+}
+
+func uint64Number(u uint64) Number {
+	return Number(strconv.FormatUint(u, 10))
 }
 
 func floatNumber(f float64) Number {
@@ -714,11 +759,11 @@ func (str String) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return str, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // IsGround always returns true.
-func (str String) IsGround() bool {
+func (String) IsGround() bool {
 	return true
 }
 
@@ -728,8 +773,7 @@ func (str String) String() string {
 
 // Hash returns the hash code for the Value.
 func (str String) Hash() int {
-	bs := []byte(str)
-	h := siphash.Hash(hashSeed0, hashSeed1, bs)
+	h := xxhash.ChecksumString64S(string(str), hashSeed0)
 	return int(h)
 }
 
@@ -763,18 +807,17 @@ func (v Var) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return v, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code for the Value.
 func (v Var) Hash() int {
-	bs := []byte(v)
-	h := siphash.Hash(hashSeed0, hashSeed1, bs)
+	h := xxhash.ChecksumString64S(string(v), hashSeed0)
 	return int(h)
 }
 
 // IsGround always returns false.
-func (v Var) IsGround() bool {
+func (Var) IsGround() bool {
 	return false
 }
 
@@ -805,6 +848,30 @@ type Ref []*Term
 // EmptyRef returns a new, empty reference.
 func EmptyRef() Ref {
 	return Ref([]*Term{})
+}
+
+// PtrRef returns a new reference against the head for the pointer
+// s. Path components in the pointer are unescaped.
+func PtrRef(head *Term, s string) (Ref, error) {
+	s = strings.Trim(s, "/")
+	if s == "" {
+		return Ref{head}, nil
+	}
+	parts := strings.Split(s, "/")
+	if max := math.MaxInt32; len(parts) >= max {
+		return nil, fmt.Errorf("path too long: %s, %d > %d (max)", s, len(parts), max)
+	}
+	ref := make(Ref, uint(len(parts))+1)
+	ref[0] = head
+	for i := 0; i < len(parts); i++ {
+		var err error
+		parts[i], err = url.PathUnescape(parts[i])
+		if err != nil {
+			return nil, err
+		}
+		ref[i+1] = StringTerm(parts[i])
+	}
+	return ref, nil
 }
 
 // RefTerm creates a new Term with a Ref value.
@@ -845,9 +912,8 @@ func (ref Ref) Insert(x *Term, pos int) Ref {
 // other will be converted to a string.
 func (ref Ref) Extend(other Ref) Ref {
 	dst := make(Ref, len(ref)+len(other))
-	for i := range ref {
-		dst[i] = ref[i]
-	}
+	copy(dst, ref)
+
 	head := other[0].Copy()
 	head.Value = String(head.Value.(Var))
 	offset := len(ref)
@@ -864,9 +930,8 @@ func (ref Ref) Concat(terms []*Term) Ref {
 		return ref
 	}
 	cpy := make(Ref, len(ref)+len(terms))
-	for i := range ref {
-		cpy[i] = ref[i]
-	}
+	copy(cpy, ref)
+
 	for i := range terms {
 		cpy[len(ref)+i] = terms[i]
 	}
@@ -875,6 +940,10 @@ func (ref Ref) Concat(terms []*Term) Ref {
 
 // Dynamic returns the offset of the first non-constant operand of ref.
 func (ref Ref) Dynamic() int {
+	switch ref[0].Value.(type) {
+	case Call:
+		return 0
+	}
 	for i := 1; i < len(ref); i++ {
 		if !IsConstant(ref[i].Value) {
 			return i
@@ -899,12 +968,12 @@ func (ref Ref) Compare(other Value) int {
 	return Compare(ref, other)
 }
 
-// Find returns the current value or a not found error.
+// Find returns the current value or a "not found" error.
 func (ref Ref) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return ref, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code for the Value.
@@ -969,19 +1038,29 @@ func (ref Ref) IsNested() bool {
 	return false
 }
 
+// Ptr returns a slash-separated path string for this ref. If the ref
+// contains non-string terms this function returns an error. Path
+// components are escaped.
+func (ref Ref) Ptr() (string, error) {
+	parts := make([]string, 0, len(ref)-1)
+	for _, term := range ref[1:] {
+		if str, ok := term.Value.(String); ok {
+			parts = append(parts, url.PathEscape(string(str)))
+		} else {
+			return "", fmt.Errorf("invalid path value type")
+		}
+	}
+	return strings.Join(parts, "/"), nil
+}
+
 var varRegexp = regexp.MustCompile("^[[:alpha:]_][[:alpha:][:digit:]_]*$")
 
 func (ref Ref) String() string {
 	if len(ref) == 0 {
 		return ""
 	}
-	var buf []string
-	path := ref
-	switch v := ref[0].Value.(type) {
-	case Var:
-		buf = append(buf, string(v))
-		path = path[1:]
-	}
+	buf := []string{ref[0].Value.String()}
+	path := ref[1:]
 	for _, p := range path {
 		switch p := p.Value.(type) {
 		case String:
@@ -1002,60 +1081,83 @@ func (ref Ref) String() string {
 //  this expression in isolation.
 func (ref Ref) OutputVars() VarSet {
 	vis := NewVarVisitor().WithParams(VarVisitorParams{SkipRefHead: true})
-	Walk(vis, ref)
+	vis.Walk(ref)
 	return vis.Vars()
 }
 
 // QueryIterator defines the interface for querying AST documents with references.
 type QueryIterator func(map[Var]Value, Value) error
 
+// ArrayTerm creates a new Term with an Array value.
+func ArrayTerm(a ...*Term) *Term {
+	return NewTerm(NewArray(a...))
+}
+
+// NewArray creates an Array with the terms provided. The array will
+// use the provided term slice.
+func NewArray(a ...*Term) *Array {
+	hs := make([]int, len(a))
+	for i, e := range a {
+		hs[i] = e.Value.Hash()
+	}
+	arr := &Array{elems: a, hashs: hs, ground: termSliceIsGround(a)}
+	arr.rehash()
+	return arr
+}
+
 // Array represents an array as defined by the language. Arrays are similar to the
 // same types as defined by JSON with the exception that they can contain Vars
 // and References.
-type Array []*Term
-
-// ArrayTerm creates a new Term with an Array value.
-func ArrayTerm(a ...*Term) *Term {
-	return &Term{Value: Array(a)}
+type Array struct {
+	elems  []*Term
+	hashs  []int // element hashes
+	hash   int
+	ground bool
 }
 
 // Copy returns a deep copy of arr.
-func (arr Array) Copy() Array {
-	return termSliceCopy(arr)
+func (arr *Array) Copy() *Array {
+	cpy := make([]int, len(arr.elems))
+	copy(cpy, arr.hashs)
+	return &Array{
+		elems:  termSliceCopy(arr.elems),
+		hashs:  cpy,
+		hash:   arr.hash,
+		ground: arr.IsGround()}
 }
 
 // Equal returns true if arr is equal to other.
-func (arr Array) Equal(other Value) bool {
+func (arr *Array) Equal(other Value) bool {
 	return Compare(arr, other) == 0
 }
 
 // Compare compares arr to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
-func (arr Array) Compare(other Value) int {
+func (arr *Array) Compare(other Value) int {
 	return Compare(arr, other)
 }
 
 // Find returns the value at the index or an out-of-range error.
-func (arr Array) Find(path Ref) (Value, error) {
+func (arr *Array) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return arr, nil
 	}
 	num, ok := path[0].Value.(Number)
 	if !ok {
-		return nil, fmt.Errorf("find: not found")
+		return nil, errFindNotFound
 	}
 	i, ok := num.Int()
 	if !ok {
-		return nil, fmt.Errorf("find: not found")
+		return nil, errFindNotFound
 	}
-	if i < 0 || i >= len(arr) {
-		return nil, fmt.Errorf("find: not found")
+	if i < 0 || i >= arr.Len() {
+		return nil, errFindNotFound
 	}
-	return arr[i].Value.Find(path[1:])
+	return arr.Elem(i).Value.Find(path[1:])
 }
 
 // Get returns the element at pos or nil if not possible.
-func (arr Array) Get(pos *Term) *Term {
+func (arr *Array) Get(pos *Term) *Term {
 	num, ok := pos.Value.(Number)
 	if !ok {
 		return nil
@@ -1066,47 +1168,142 @@ func (arr Array) Get(pos *Term) *Term {
 		return nil
 	}
 
-	if i >= 0 && i < len(arr) {
-		return arr[i]
+	if i >= 0 && i < len(arr.elems) {
+		return arr.elems[i]
 	}
 
 	return nil
 }
 
 // Sorted returns a new Array that contains the sorted elements of arr.
-func (arr Array) Sorted() Array {
-	cpy := make(Array, len(arr))
+func (arr *Array) Sorted() *Array {
+	cpy := make([]*Term, len(arr.elems))
 	for i := range cpy {
-		cpy[i] = arr[i]
+		cpy[i] = arr.elems[i]
 	}
 	sort.Sort(termSlice(cpy))
-	return cpy
+	a := NewArray(cpy...)
+	a.hashs = arr.hashs
+	return a
 }
 
 // Hash returns the hash code for the Value.
-func (arr Array) Hash() int {
-	return termSliceHash(arr)
+func (arr *Array) Hash() int {
+	return arr.hash
 }
 
 // IsGround returns true if all of the Array elements are ground.
-func (arr Array) IsGround() bool {
-	return termSliceIsGround(arr)
+func (arr *Array) IsGround() bool {
+	return arr.ground
 }
 
 // MarshalJSON returns JSON encoded bytes representing arr.
-func (arr Array) MarshalJSON() ([]byte, error) {
-	if len(arr) == 0 {
-		return json.Marshal([]interface{}{})
+func (arr *Array) MarshalJSON() ([]byte, error) {
+	if len(arr.elems) == 0 {
+		return []byte(`[]`), nil
 	}
-	return json.Marshal([]*Term(arr))
+	return json.Marshal(arr.elems)
 }
 
-func (arr Array) String() string {
-	var buf []string
-	for _, e := range arr {
-		buf = append(buf, e.String())
+func (arr *Array) String() string {
+	var b strings.Builder
+	b.WriteRune('[')
+	for i, e := range arr.elems {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(e.String())
 	}
-	return "[" + strings.Join(buf, ", ") + "]"
+	b.WriteRune(']')
+	return b.String()
+}
+
+// Len returns the number of elements in the array.
+func (arr *Array) Len() int {
+	return len(arr.elems)
+}
+
+// Elem returns the element i of arr.
+func (arr *Array) Elem(i int) *Term {
+	return arr.elems[i]
+}
+
+// rehash updates the cached hash of arr.
+func (arr *Array) rehash() {
+	arr.hash = 0
+	for _, h := range arr.hashs {
+		arr.hash += h
+	}
+}
+
+// set sets the element i of arr.
+func (arr *Array) set(i int, v *Term) {
+	arr.ground = arr.ground && v.IsGround()
+	arr.elems[i] = v
+	arr.hashs[i] = v.Value.Hash()
+}
+
+// Slice returns a slice of arr starting from i index to j. -1
+// indicates the end of the array. The returned value array is not a
+// copy and any modifications to either of arrays may be reflected to
+// the other.
+func (arr *Array) Slice(i, j int) *Array {
+	var elems []*Term
+	var hashs []int
+	if j == -1 {
+		elems = arr.elems[i:]
+		hashs = arr.hashs[i:]
+	} else {
+		elems = arr.elems[i:j]
+		hashs = arr.hashs[i:j]
+	}
+	// If arr is ground, the slice is, too.
+	// If it's not, the slice could still be.
+	gr := arr.ground || termSliceIsGround(elems)
+
+	s := &Array{elems: elems, hashs: hashs, ground: gr}
+	s.rehash()
+	return s
+}
+
+// Iter calls f on each element in arr. If f returns an error,
+// iteration stops and the return value is the error.
+func (arr *Array) Iter(f func(*Term) error) error {
+	for i := range arr.elems {
+		if err := f(arr.elems[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Until calls f on each element in arr. If f returns true, iteration stops.
+func (arr *Array) Until(f func(*Term) bool) bool {
+	err := arr.Iter(func(t *Term) error {
+		if f(t) {
+			return errStop
+		}
+		return nil
+	})
+	return err != nil
+}
+
+// Foreach calls f on each element in arr.
+func (arr *Array) Foreach(f func(*Term)) {
+	_ = arr.Iter(func(t *Term) error {
+		f(t)
+		return nil
+	}) // ignore error
+}
+
+// Append appends a term to arr, returning the appended array.
+func (arr *Array) Append(v *Term) *Array {
+	cpy := *arr
+	cpy.elems = append(arr.elems, v)
+	cpy.hashs = append(arr.hashs, v.Value.Hash())
+	cpy.hash = arr.hash + v.Value.Hash()
+	cpy.ground = arr.ground && v.IsGround()
+	return &cpy
 }
 
 // Set represents a set as defined by the language.
@@ -1124,18 +1321,30 @@ type Set interface {
 	Contains(*Term) bool
 	Map(func(*Term) (*Term, error)) (Set, error)
 	Reduce(*Term, func(*Term, *Term) (*Term, error)) (*Term, error)
-	Sorted() Array
+	Sorted() *Array
+	Slice() []*Term
 }
 
 // NewSet returns a new Set containing t.
 func NewSet(t ...*Term) Set {
-	s := &set{
-		elems: map[int]*setElem{},
-	}
+	s := newset(len(t))
 	for i := range t {
 		s.Add(t[i])
 	}
 	return s
+}
+
+func newset(n int) *set {
+	var keys []*Term
+	if n > 0 {
+		keys = make([]*Term, 0, n)
+	}
+	return &set{
+		elems:  make(map[int]*Term, n),
+		keys:   keys,
+		hash:   0,
+		ground: true,
+	}
 }
 
 // SetTerm returns a new Term representing a set containing terms t.
@@ -1147,57 +1356,47 @@ func SetTerm(t ...*Term) *Term {
 }
 
 type set struct {
-	elems map[int]*setElem
-	keys  []*Term
-}
-
-type setElem struct {
-	elem *Term
-	next *setElem
-}
-
-func (s *setElem) String() string {
-	buf := []string{}
-	for c := s; c != nil; c = c.next {
-		buf = append(buf, fmt.Sprint(c.elem))
-	}
-	return strings.Join(buf, "->")
+	elems  map[int]*Term
+	keys   []*Term
+	hash   int
+	ground bool
 }
 
 // Copy returns a deep copy of s.
 func (s *set) Copy() Set {
-	cpy := NewSet()
+	cpy := newset(s.Len())
 	s.Foreach(func(x *Term) {
-		cpy.Add(x)
+		cpy.Add(x.Copy())
 	})
+	cpy.hash = s.hash
+	cpy.ground = s.ground
 	return cpy
 }
 
 // IsGround returns true if all terms in s are ground.
 func (s *set) IsGround() bool {
-	return !s.Until(func(x *Term) bool {
-		return !x.IsGround()
-	})
+	return s.ground
 }
 
 // Hash returns a hash code for s.
 func (s *set) Hash() int {
-	var hash int
-	s.Foreach(func(x *Term) {
-		hash += x.Hash()
-	})
-	return hash
+	return s.hash
 }
 
 func (s *set) String() string {
 	if s.Len() == 0 {
 		return "set()"
 	}
-	buf := []string{}
-	s.Foreach(func(x *Term) {
-		buf = append(buf, x.String())
-	})
-	return "{" + strings.Join(buf, ", ") + "}"
+	var b strings.Builder
+	b.WriteRune('{')
+	for i := range s.keys {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(s.keys[i].Value.String())
+	}
+	b.WriteRune('}')
+	return b.String()
 }
 
 // Compare compares s to other, return <0, 0, or >0 if it is less than, equal to,
@@ -1211,17 +1410,18 @@ func (s *set) Compare(other Value) int {
 		return 1
 	}
 	t := other.(*set)
-	sort.Sort(termSlice(s.keys))
-	sort.Sort(termSlice(t.keys))
 	return termSliceCompare(s.keys, t.keys)
 }
 
-// Find returns the current value or a not found error.
+// Find returns the set or dereferences the element itself.
 func (s *set) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return s, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	if !s.Contains(path[0]) {
+		return nil, errFindNotFound
+	}
+	return path[0].Value.Find(path[1:])
 }
 
 // Diff returns elements in s that are not in other.
@@ -1237,9 +1437,19 @@ func (s *set) Diff(other Set) Set {
 
 // Intersect returns the set containing elements in both s and other.
 func (s *set) Intersect(other Set) Set {
-	r := NewSet()
-	s.Foreach(func(x *Term) {
-		if other.Contains(x) {
+	o := other.(*set)
+	n, m := s.Len(), o.Len()
+	ss := s
+	so := o
+	if m < n {
+		ss = o
+		so = s
+		n = m
+	}
+
+	r := newset(n)
+	ss.Foreach(func(x *Term) {
+		if so.Contains(x) {
 			r.Add(x)
 		}
 	})
@@ -1289,10 +1499,10 @@ func (s *set) Until(f func(*Term) bool) bool {
 
 // Foreach calls f on each element in s.
 func (s *set) Foreach(f func(*Term)) {
-	s.Iter(func(t *Term) error {
+	_ = s.Iter(func(t *Term) error {
 		f(t)
 		return nil
-	})
+	}) // ignore error
 }
 
 // Map returns a new Set obtained by applying f to each value in s.
@@ -1340,42 +1550,217 @@ func (s *set) Len() int {
 // MarshalJSON returns JSON encoded bytes representing s.
 func (s *set) MarshalJSON() ([]byte, error) {
 	if s.keys == nil {
-		return json.Marshal([]interface{}{})
+		return []byte(`[]`), nil
 	}
 	return json.Marshal(s.keys)
 }
 
 // Sorted returns an Array that contains the sorted elements of s.
-func (s *set) Sorted() Array {
-	cpy := make(Array, len(s.keys))
-	for i := range cpy {
+func (s *set) Sorted() *Array {
+	cpy := make([]*Term, len(s.keys))
+	for i := range s.keys {
 		cpy[i] = s.keys[i]
 	}
 	sort.Sort(termSlice(cpy))
-	return cpy
+	return NewArray(cpy...)
+}
+
+// Slice returns a slice of terms contained in the set.
+func (s *set) Slice() []*Term {
+	return s.keys
 }
 
 func (s *set) insert(x *Term) {
 	hash := x.Hash()
-	head := s.elems[hash]
-	for curr := head; curr != nil; curr = curr.next {
-		if Compare(curr.elem, x) == 0 {
+	insertHash := hash
+	// This `equal` utility is duplicated and manually inlined a number of
+	// time in this file.  Inlining it avoids heap allocations, so it makes
+	// a big performance difference: some operations like lookup become twice
+	// as slow without it.
+	var equal func(v Value) bool
+
+	switch x := x.Value.(type) {
+	case Null, Boolean, String, Var:
+		equal = func(y Value) bool { return x == y }
+	case Number:
+		if xi, err := json.Number(x).Int64(); err == nil {
+			equal = func(y Value) bool {
+				if y, ok := y.(Number); ok {
+					if yi, err := json.Number(y).Int64(); err == nil {
+						return xi == yi
+					}
+				}
+
+				return false
+			}
+			break
+		}
+
+		// We use big.Rat for comparing big numbers.
+		// It replaces big.Float due to following reason:
+		// big.Float comes with a default precision of 64, and setting a
+		// larger precision results in more memory being allocated
+		// (regardless of the actual number we are parsing with SetString).
+		//
+		// Note: If we're so close to zero that big.Float says we are zero, do
+		// *not* big.Rat).SetString on the original string it'll potentially
+		// take very long.
+		var a *big.Rat
+		fa, ok := new(big.Float).SetString(string(x))
+		if !ok {
+			panic("illegal value")
+		}
+		if fa.IsInt() {
+			if i, _ := fa.Int64(); i == 0 {
+				a = new(big.Rat).SetInt64(0)
+			}
+		}
+		if a == nil {
+			a, ok = new(big.Rat).SetString(string(x))
+			if !ok {
+				panic("illegal value")
+			}
+		}
+
+		equal = func(b Value) bool {
+			if bNum, ok := b.(Number); ok {
+				var b *big.Rat
+				fb, ok := new(big.Float).SetString(string(bNum))
+				if !ok {
+					panic("illegal value")
+				}
+				if fb.IsInt() {
+					if i, _ := fb.Int64(); i == 0 {
+						b = new(big.Rat).SetInt64(0)
+					}
+				}
+				if b == nil {
+					b, ok = new(big.Rat).SetString(string(bNum))
+					if !ok {
+						panic("illegal value")
+					}
+				}
+
+				return a.Cmp(b) == 0
+			}
+
+			return false
+		}
+	default:
+		equal = func(y Value) bool { return Compare(x, y) == 0 }
+	}
+
+	for curr, ok := s.elems[insertHash]; ok; {
+		if equal(curr.Value) {
 			return
 		}
+
+		insertHash++
+		curr, ok = s.elems[insertHash]
 	}
-	s.elems[hash] = &setElem{
-		elem: x,
-		next: head,
+
+	s.elems[insertHash] = x
+	i := sort.Search(len(s.keys), func(i int) bool { return Compare(x, s.keys[i]) < 0 })
+	if i < len(s.keys) {
+		// insert at position `i`:
+		s.keys = append(s.keys, nil)   // add some space
+		copy(s.keys[i+1:], s.keys[i:]) // move things over
+		s.keys[i] = x                  // drop it in position
+	} else {
+		s.keys = append(s.keys, x)
 	}
-	s.keys = append(s.keys, x)
+
+	s.hash += hash
+	s.ground = s.ground && x.IsGround()
 }
 
-func (s *set) get(x *Term) *setElem {
+func (s *set) get(x *Term) *Term {
 	hash := x.Hash()
-	for curr := s.elems[hash]; curr != nil; curr = curr.next {
-		if Compare(curr.elem, x) == 0 {
+	// This `equal` utility is duplicated and manually inlined a number of
+	// time in this file.  Inlining it avoids heap allocations, so it makes
+	// a big performance difference: some operations like lookup become twice
+	// as slow without it.
+	var equal func(v Value) bool
+
+	switch x := x.Value.(type) {
+	case Null, Boolean, String, Var:
+		equal = func(y Value) bool { return x == y }
+	case Number:
+		if xi, err := json.Number(x).Int64(); err == nil {
+			equal = func(y Value) bool {
+				if y, ok := y.(Number); ok {
+					if yi, err := json.Number(y).Int64(); err == nil {
+						return xi == yi
+					}
+				}
+
+				return false
+			}
+			break
+		}
+
+		// We use big.Rat for comparing big numbers.
+		// It replaces big.Float due to following reason:
+		// big.Float comes with a default precision of 64, and setting a
+		// larger precision results in more memory being allocated
+		// (regardless of the actual number we are parsing with SetString).
+		//
+		// Note: If we're so close to zero that big.Float says we are zero, do
+		// *not* big.Rat).SetString on the original string it'll potentially
+		// take very long.
+		var a *big.Rat
+		fa, ok := new(big.Float).SetString(string(x))
+		if !ok {
+			panic("illegal value")
+		}
+		if fa.IsInt() {
+			if i, _ := fa.Int64(); i == 0 {
+				a = new(big.Rat).SetInt64(0)
+			}
+		}
+		if a == nil {
+			a, ok = new(big.Rat).SetString(string(x))
+			if !ok {
+				panic("illegal value")
+			}
+		}
+
+		equal = func(b Value) bool {
+			if bNum, ok := b.(Number); ok {
+				var b *big.Rat
+				fb, ok := new(big.Float).SetString(string(bNum))
+				if !ok {
+					panic("illegal value")
+				}
+				if fb.IsInt() {
+					if i, _ := fb.Int64(); i == 0 {
+						b = new(big.Rat).SetInt64(0)
+					}
+				}
+				if b == nil {
+					b, ok = new(big.Rat).SetString(string(bNum))
+					if !ok {
+						panic("illegal value")
+					}
+				}
+
+				return a.Cmp(b) == 0
+			}
+			return false
+
+		}
+
+	default:
+		equal = func(y Value) bool { return Compare(x, y) == 0 }
+	}
+
+	for curr, ok := s.elems[hash]; ok; {
+		if equal(curr.Value) {
 			return curr
 		}
+
+		hash++
+		curr, ok = s.elems[hash]
 	}
 	return nil
 }
@@ -1394,7 +1779,11 @@ type Object interface {
 	Diff(other Object) Object
 	Intersect(other Object) [][3]*Term
 	Merge(other Object) (Object, bool)
+	MergeWith(other Object, conflictResolver func(v1, v2 *Term) (*Term, bool)) (Object, bool)
+	Filter(filter Object) (Object, error)
 	Keys() []*Term
+	Elem(i int) (*Term, *Term)
+	get(k *Term) *objectElem // To prevent external implementations
 }
 
 // NewObject creates a new Object with t.
@@ -1413,14 +1802,22 @@ func ObjectTerm(o ...[2]*Term) *Term {
 
 type object struct {
 	elems  map[int]*objectElem
-	keys   []*Term
-	ground bool
+	keys   objectElemSlice
+	ground int // number of key and value grounds. Counting is
+	// required to support insert's key-value replace.
+	hash int
 }
 
 func newobject(n int) *object {
+	var keys objectElemSlice
+	if n > 0 {
+		keys = make(objectElemSlice, 0, n)
+	}
 	return &object{
 		elems:  make(map[int]*objectElem, n),
-		ground: true,
+		keys:   keys,
+		ground: 0,
+		hash:   0,
 	}
 }
 
@@ -1429,6 +1826,12 @@ type objectElem struct {
 	value *Term
 	next  *objectElem
 }
+
+type objectElemSlice []*objectElem
+
+func (s objectElemSlice) Less(i, j int) bool { return Compare(s[i].key.Value, s[j].key.Value) < 0 }
+func (s objectElemSlice) Swap(i, j int)      { x := s[i]; s[i] = s[j]; s[j] = x }
+func (s objectElemSlice) Len() int           { return len(s) }
 
 // Item is a helper for constructing an tuple containing two Terms
 // representing a key/value pair in an Object.
@@ -1448,33 +1851,29 @@ func (obj *object) Compare(other Value) int {
 	}
 	a := obj
 	b := other.(*object)
-	keysA := a.Keys()
-	keysB := b.Keys()
-	sort.Sort(termSlice(keysA))
-	sort.Sort(termSlice(keysB))
-	minLen := a.Len()
-	if b.Len() < a.Len() {
-		minLen = b.Len()
+	minLen := len(a.keys)
+	if len(b.keys) < len(a.keys) {
+		minLen = len(b.keys)
 	}
 	for i := 0; i < minLen; i++ {
-		keysCmp := Compare(keysA[i], keysB[i])
+		keysCmp := Compare(a.keys[i].key, b.keys[i].key)
 		if keysCmp < 0 {
 			return -1
 		}
 		if keysCmp > 0 {
 			return 1
 		}
-		valA := a.Get(keysA[i])
-		valB := b.Get(keysB[i])
+		valA := a.keys[i].value
+		valB := b.keys[i].value
 		valCmp := Compare(valA, valB)
 		if valCmp != 0 {
 			return valCmp
 		}
 	}
-	if a.Len() < b.Len() {
+	if len(a.keys) < len(b.keys) {
 		return -1
 	}
-	if b.Len() < a.Len() {
+	if len(b.keys) < len(a.keys) {
 		return 1
 	}
 	return 0
@@ -1487,7 +1886,7 @@ func (obj *object) Find(path Ref) (Value, error) {
 	}
 	value := obj.Get(path[0])
 	if value == nil {
-		return nil, fmt.Errorf("find: not found")
+		return nil, errFindNotFound
 	}
 	return value.Value.Find(path[1:])
 }
@@ -1506,17 +1905,12 @@ func (obj *object) Get(k *Term) *Term {
 
 // Hash returns the hash code for the Value.
 func (obj *object) Hash() int {
-	var hash int
-	obj.Foreach(func(k, v *Term) {
-		hash += v.Value.Hash()
-		hash += v.Value.Hash()
-	})
-	return hash
+	return obj.hash
 }
 
 // IsGround returns true if all of the Object key/value pairs are ground.
 func (obj *object) IsGround() bool {
-	return obj.ground
+	return obj.ground == 2*len(obj.keys)
 }
 
 // Copy returns a deep copy of obj.
@@ -1524,6 +1918,7 @@ func (obj *object) Copy() Object {
 	cpy, _ := obj.Map(func(k, v *Term) (*Term, *Term, error) {
 		return k.Copy(), v.Copy(), nil
 	})
+	cpy.(*object).hash = obj.hash
 	return cpy
 }
 
@@ -1554,21 +1949,17 @@ func (obj *object) Intersect(other Object) [][3]*Term {
 // Iter calls the function f for each key-value pair in the object. If f
 // returns an error, iteration stops and the error is returned.
 func (obj *object) Iter(f func(*Term, *Term) error) error {
-	for i := range obj.keys {
-		k := obj.keys[i]
-		node := obj.get(k)
-		if node == nil {
-			panic("corrupt object")
-		}
-		if err := f(k, node.value); err != nil {
+	for _, node := range obj.keys {
+		if err := f(node.key, node.value); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// Until calls f for each key-value pair in the object. If f returns true,
-// iteration stops.
+// Until calls f for each key-value pair in the object. If f returns
+// true, iteration stops and Until returns true. Otherwise, return
+// false.
 func (obj *object) Until(f func(*Term, *Term) bool) bool {
 	err := obj.Iter(func(k, v *Term) error {
 		if f(k, v) {
@@ -1581,10 +1972,10 @@ func (obj *object) Until(f func(*Term, *Term) bool) bool {
 
 // Foreach calls f for each key-value pair in the object.
 func (obj *object) Foreach(f func(*Term, *Term)) {
-	obj.Iter(func(k, v *Term) error {
+	_ = obj.Iter(func(k, v *Term) error {
 		f(k, v)
 		return nil
-	})
+	}) // ignore error
 }
 
 // Map returns a new Object constructed by mapping each element in the object
@@ -1608,15 +1999,24 @@ func (obj *object) Map(f func(*Term, *Term) (*Term, *Term, error)) (Object, erro
 
 // Keys returns the keys of obj.
 func (obj *object) Keys() []*Term {
-	return obj.keys
+	keys := make([]*Term, len(obj.keys))
+
+	for i, elem := range obj.keys {
+		keys[i] = elem.key
+	}
+
+	return keys
+}
+
+func (obj *object) Elem(i int) (*Term, *Term) {
+	return obj.keys[i].key, obj.keys[i].value
 }
 
 // MarshalJSON returns JSON encoded bytes representing obj.
 func (obj *object) MarshalJSON() ([]byte, error) {
 	sl := make([][2]*Term, obj.Len())
-	for i := range obj.keys {
-		k := obj.keys[i]
-		sl[i] = Item(k, obj.get(k).value)
+	for i, node := range obj.keys {
+		sl[i] = Item(node.key, node.value)
 	}
 	return json.Marshal(sl)
 }
@@ -1625,28 +2025,48 @@ func (obj *object) MarshalJSON() ([]byte, error) {
 // overlapping keys between obj and other, the values of associated with the keys are merged. Only
 // objects can be merged with other objects. If the values cannot be merged, the second turn value
 // will be false.
-func (obj object) Merge(other Object) (result Object, ok bool) {
-	result = NewObject()
-	stop := obj.Until(func(k, v *Term) bool {
-		if v2 := other.Get(k); v2 == nil {
-			result.Insert(k, v)
-		} else {
-			obj1, ok1 := v.Value.(Object)
-			obj2, ok2 := v2.Value.(Object)
-			if !ok1 || !ok2 {
-				return true
-			}
-			obj3, ok := obj1.Merge(obj2)
-			if !ok {
-				return true
-			}
-			result.Insert(k, NewTerm(obj3))
+func (obj object) Merge(other Object) (Object, bool) {
+	return obj.MergeWith(other, func(v1, v2 *Term) (*Term, bool) {
+		obj1, ok1 := v1.Value.(Object)
+		obj2, ok2 := v2.Value.(Object)
+		if !ok1 || !ok2 {
+			return nil, true
 		}
-		return false
+		obj3, ok := obj1.Merge(obj2)
+		if !ok {
+			return nil, true
+		}
+		return NewTerm(obj3), false
 	})
+}
+
+// MergeWith returns a new Object containing the merged keys of obj and other.
+// If there are overlapping keys between obj and other, the conflictResolver
+// is called. The conflictResolver can return a merged value and a boolean
+// indicating if the merge has failed and should stop.
+func (obj object) MergeWith(other Object, conflictResolver func(v1, v2 *Term) (*Term, bool)) (Object, bool) {
+	result := NewObject()
+	stop := obj.Until(func(k, v *Term) bool {
+		v2 := other.Get(k)
+		// The key didn't exist in other, keep the original value
+		if v2 == nil {
+			result.Insert(k, v)
+			return false
+		}
+
+		// The key exists in both, resolve the conflict if possible
+		merged, stop := conflictResolver(v, v2)
+		if !stop {
+			result.Insert(k, merged)
+		}
+		return stop
+	})
+
 	if stop {
 		return nil, false
 	}
+
+	// Copy in any values from other for keys that don't exist in obj
 	other.Foreach(func(k, v *Term) {
 		if v2 := obj.Get(k); v2 == nil {
 			result.Insert(k, v)
@@ -1655,23 +2075,120 @@ func (obj object) Merge(other Object) (result Object, ok bool) {
 	return result, true
 }
 
+// Filter returns a new object from values in obj where the keys are
+// found in filter. Array indices for values can be specified as
+// number strings.
+func (obj *object) Filter(filter Object) (Object, error) {
+	filtered, err := filterObject(obj, filter)
+	if err != nil {
+		return nil, err
+	}
+	return filtered.(Object), nil
+}
+
 // Len returns the number of elements in the object.
 func (obj object) Len() int {
 	return len(obj.keys)
 }
 
 func (obj object) String() string {
-	var buf []string
-	obj.Foreach(func(k, v *Term) {
-		buf = append(buf, fmt.Sprintf("%s: %s", k, v))
-	})
-	return "{" + strings.Join(buf, ", ") + "}"
+	var b strings.Builder
+	b.WriteRune('{')
+
+	for i, elem := range obj.keys {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(elem.key.String())
+		b.WriteString(": ")
+		b.WriteString(elem.value.String())
+	}
+	b.WriteRune('}')
+	return b.String()
 }
 
 func (obj *object) get(k *Term) *objectElem {
 	hash := k.Hash()
+
+	// This `equal` utility is duplicated and manually inlined a number of
+	// time in this file.  Inlining it avoids heap allocations, so it makes
+	// a big performance difference: some operations like lookup become twice
+	// as slow without it.
+	var equal func(v Value) bool
+
+	switch x := k.Value.(type) {
+	case Null, Boolean, String, Var:
+		equal = func(y Value) bool { return x == y }
+	case Number:
+		if xi, err := json.Number(x).Int64(); err == nil {
+			equal = func(y Value) bool {
+				if y, ok := y.(Number); ok {
+					if yi, err := json.Number(y).Int64(); err == nil {
+						return xi == yi
+					}
+				}
+
+				return false
+			}
+			break
+		}
+
+		// We use big.Rat for comparing big numbers.
+		// It replaces big.Float due to following reason:
+		// big.Float comes with a default precision of 64, and setting a
+		// larger precision results in more memory being allocated
+		// (regardless of the actual number we are parsing with SetString).
+		//
+		// Note: If we're so close to zero that big.Float says we are zero, do
+		// *not* big.Rat).SetString on the original string it'll potentially
+		// take very long.
+		var a *big.Rat
+		fa, ok := new(big.Float).SetString(string(x))
+		if !ok {
+			panic("illegal value")
+		}
+		if fa.IsInt() {
+			if i, _ := fa.Int64(); i == 0 {
+				a = new(big.Rat).SetInt64(0)
+			}
+		}
+		if a == nil {
+			a, ok = new(big.Rat).SetString(string(x))
+			if !ok {
+				panic("illegal value")
+			}
+		}
+
+		equal = func(b Value) bool {
+			if bNum, ok := b.(Number); ok {
+				var b *big.Rat
+				fb, ok := new(big.Float).SetString(string(bNum))
+				if !ok {
+					panic("illegal value")
+				}
+				if fb.IsInt() {
+					if i, _ := fb.Int64(); i == 0 {
+						b = new(big.Rat).SetInt64(0)
+					}
+				}
+				if b == nil {
+					b, ok = new(big.Rat).SetString(string(bNum))
+					if !ok {
+						panic("illegal value")
+					}
+				}
+
+				return a.Cmp(b) == 0
+			}
+
+			return false
+		}
+	default:
+		equal = func(y Value) bool { return Compare(x, y) == 0 }
+	}
+
 	for curr := obj.elems[hash]; curr != nil; curr = curr.next {
-		if Compare(curr.key, k) == 0 {
+		if equal(curr.key.Value) {
 			return curr
 		}
 	}
@@ -1681,19 +2198,188 @@ func (obj *object) get(k *Term) *objectElem {
 func (obj *object) insert(k, v *Term) {
 	hash := k.Hash()
 	head := obj.elems[hash]
+	// This `equal` utility is duplicated and manually inlined a number of
+	// time in this file.  Inlining it avoids heap allocations, so it makes
+	// a big performance difference: some operations like lookup become twice
+	// as slow without it.
+	var equal func(v Value) bool
+
+	switch x := k.Value.(type) {
+	case Null, Boolean, String, Var:
+		equal = func(y Value) bool { return x == y }
+	case Number:
+		if xi, err := json.Number(x).Int64(); err == nil {
+			equal = func(y Value) bool {
+				if y, ok := y.(Number); ok {
+					if yi, err := json.Number(y).Int64(); err == nil {
+						return xi == yi
+					}
+				}
+
+				return false
+			}
+			break
+		}
+
+		// We use big.Rat for comparing big numbers.
+		// It replaces big.Float due to following reason:
+		// big.Float comes with a default precision of 64, and setting a
+		// larger precision results in more memory being allocated
+		// (regardless of the actual number we are parsing with SetString).
+		//
+		// Note: If we're so close to zero that big.Float says we are zero, do
+		// *not* big.Rat).SetString on the original string it'll potentially
+		// take very long.
+		var a *big.Rat
+		fa, ok := new(big.Float).SetString(string(x))
+		if !ok {
+			panic("illegal value")
+		}
+		if fa.IsInt() {
+			if i, _ := fa.Int64(); i == 0 {
+				a = new(big.Rat).SetInt64(0)
+			}
+		}
+		if a == nil {
+			a, ok = new(big.Rat).SetString(string(x))
+			if !ok {
+				panic("illegal value")
+			}
+		}
+
+		equal = func(b Value) bool {
+			if bNum, ok := b.(Number); ok {
+				var b *big.Rat
+				fb, ok := new(big.Float).SetString(string(bNum))
+				if !ok {
+					panic("illegal value")
+				}
+				if fb.IsInt() {
+					if i, _ := fb.Int64(); i == 0 {
+						b = new(big.Rat).SetInt64(0)
+					}
+				}
+				if b == nil {
+					b, ok = new(big.Rat).SetString(string(bNum))
+					if !ok {
+						panic("illegal value")
+					}
+				}
+
+				return a.Cmp(b) == 0
+			}
+
+			return false
+		}
+	default:
+		equal = func(y Value) bool { return Compare(x, y) == 0 }
+	}
+
 	for curr := head; curr != nil; curr = curr.next {
-		if Compare(curr.key, k) == 0 {
+		if equal(curr.key.Value) {
+			// The ground bit of the value may change in
+			// replace, hence adjust the counter per old
+			// and new value.
+
+			if curr.value.IsGround() {
+				obj.ground--
+			}
+			if v.IsGround() {
+				obj.ground++
+			}
+
 			curr.value = v
 			return
 		}
 	}
-	obj.elems[hash] = &objectElem{
+	elem := &objectElem{
 		key:   k,
 		value: v,
 		next:  head,
 	}
-	obj.keys = append(obj.keys, k)
-	obj.ground = obj.ground && k.IsGround() && v.IsGround()
+	obj.elems[hash] = elem
+	i := sort.Search(len(obj.keys), func(i int) bool { return Compare(elem.key, obj.keys[i].key) < 0 })
+	if i < len(obj.keys) {
+		// insert at position `i`:
+		obj.keys = append(obj.keys, nil)   // add some space
+		copy(obj.keys[i+1:], obj.keys[i:]) // move things over
+		obj.keys[i] = elem                 // drop it in position
+	} else {
+		obj.keys = append(obj.keys, elem)
+	}
+	obj.hash += hash + v.Hash()
+
+	if k.IsGround() {
+		obj.ground++
+	}
+	if v.IsGround() {
+		obj.ground++
+	}
+}
+
+func filterObject(o Value, filter Value) (Value, error) {
+	if filter.Compare(Null{}) == 0 {
+		return o, nil
+	}
+
+	filteredObj, ok := filter.(*object)
+	if !ok {
+		return nil, fmt.Errorf("invalid filter value %q, expected an object", filter)
+	}
+
+	switch v := o.(type) {
+	case String, Number, Boolean, Null:
+		return o, nil
+	case *Array:
+		values := NewArray()
+		for i := 0; i < v.Len(); i++ {
+			subFilter := filteredObj.Get(StringTerm(strconv.Itoa(i)))
+			if subFilter != nil {
+				filteredValue, err := filterObject(v.Elem(i).Value, subFilter.Value)
+				if err != nil {
+					return nil, err
+				}
+				values = values.Append(NewTerm(filteredValue))
+			}
+		}
+		return values, nil
+	case Set:
+		values := NewSet()
+		err := v.Iter(func(t *Term) error {
+			if filteredObj.Get(t) != nil {
+				filteredValue, err := filterObject(t.Value, filteredObj.Get(t).Value)
+				if err != nil {
+					return err
+				}
+				values.Add(NewTerm(filteredValue))
+			}
+			return nil
+		})
+		return values, err
+	case *object:
+		values := NewObject()
+
+		iterObj := v
+		other := filteredObj
+		if v.Len() < filteredObj.Len() {
+			iterObj = filteredObj
+			other = v
+		}
+
+		err := iterObj.Iter(func(key *Term, value *Term) error {
+			if other.Get(key) != nil {
+				filteredValue, err := filterObject(v.Get(key).Value, filteredObj.Get(key).Value)
+				if err != nil {
+					return err
+				}
+				values.Insert(key, NewTerm(filteredValue))
+			}
+			return nil
+		})
+		return values, err
+	default:
+		return nil, fmt.Errorf("invalid object value type %q", v)
+	}
 }
 
 // ArrayComprehension represents an array comprehension as defined in the language.
@@ -1736,7 +2422,7 @@ func (ac *ArrayComprehension) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return ac, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code of the Value.
@@ -1796,7 +2482,7 @@ func (oc *ObjectComprehension) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return oc, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code of the Value.
@@ -1853,7 +2539,7 @@ func (sc *SetComprehension) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
 		return sc, nil
 	}
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code of the Value.
@@ -1892,7 +2578,7 @@ func (c Call) Compare(other Value) int {
 
 // Find returns the current value or a not found error.
 func (c Call) Find(Ref) (Value, error) {
-	return nil, fmt.Errorf("find: not found")
+	return nil, errFindNotFound
 }
 
 // Hash returns the hash code for the Value.
@@ -2115,7 +2801,7 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 		}
 	case "array":
 		if s, err := unmarshalTermSliceValue(d); err == nil {
-			return Array(s), nil
+			return NewArray(s...), nil
 		}
 	case "set":
 		if s, err := unmarshalTermSliceValue(d); err == nil {
