@@ -6,6 +6,8 @@ package topdown
 
 import (
 	"fmt"
+	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/open-policy-agent/opa/ast"
@@ -54,13 +56,17 @@ func builtinConcat(a, b ast.Value) (ast.Value, error) {
 	strs := []string{}
 
 	switch b := b.(type) {
-	case ast.Array:
-		for i := range b {
-			s, ok := b[i].Value.(ast.String)
+	case *ast.Array:
+		err := b.Iter(func(x *ast.Term) error {
+			s, ok := x.Value.(ast.String)
 			if !ok {
-				return nil, builtins.NewOperandElementErr(2, b, b[i].Value, "string")
+				return builtins.NewOperandElementErr(2, b, x.Value, "string")
 			}
 			strs = append(strs, string(s))
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
 	case ast.Set:
 		err := b.Iter(func(x *ast.Term) error {
@@ -81,6 +87,18 @@ func builtinConcat(a, b ast.Value) (ast.Value, error) {
 	return ast.String(strings.Join(strs, string(join))), nil
 }
 
+func runesEqual(a, b []rune) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func builtinIndexOf(a, b ast.Value) (ast.Value, error) {
 	base, err := builtins.StringOperand(a, 1)
 	if err != nil {
@@ -91,9 +109,57 @@ func builtinIndexOf(a, b ast.Value) (ast.Value, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(string(search)) == 0 {
+		return nil, fmt.Errorf("empty search character")
+	}
 
-	index := strings.Index(string(base), string(search))
-	return ast.IntNumberTerm(index).Value, nil
+	baseRunes := []rune(string(base))
+	searchRunes := []rune(string(search))
+	searchLen := len(searchRunes)
+
+	for i, r := range baseRunes {
+		if len(baseRunes) >= i+searchLen {
+			if r == searchRunes[0] && runesEqual(baseRunes[i:i+searchLen], searchRunes) {
+				return ast.IntNumberTerm(i).Value, nil
+			}
+		} else {
+			break
+		}
+	}
+
+	return ast.IntNumberTerm(-1).Value, nil
+}
+
+func builtinIndexOfN(a, b ast.Value) (ast.Value, error) {
+	base, err := builtins.StringOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	search, err := builtins.StringOperand(b, 2)
+	if err != nil {
+		return nil, err
+	}
+	if len(string(search)) == 0 {
+		return nil, fmt.Errorf("empty search character")
+	}
+
+	baseRunes := []rune(string(base))
+	searchRunes := []rune(string(search))
+	searchLen := len(searchRunes)
+
+	var arr []*ast.Term
+	for i, r := range baseRunes {
+		if len(baseRunes) >= i+searchLen {
+			if r == searchRunes[0] && runesEqual(baseRunes[i:i+searchLen], searchRunes) {
+				arr = append(arr, ast.IntNumberTerm(i))
+			}
+		} else {
+			break
+		}
+	}
+
+	return ast.NewArray(arr...), nil
 }
 
 func builtinSubstring(a, b, c ast.Value) (ast.Value, error) {
@@ -102,10 +168,15 @@ func builtinSubstring(a, b, c ast.Value) (ast.Value, error) {
 	if err != nil {
 		return nil, err
 	}
+	runes := []rune(base)
 
 	startIndex, err := builtins.IntOperand(b, 2)
 	if err != nil {
 		return nil, err
+	} else if startIndex >= len(runes) {
+		return ast.String(""), nil
+	} else if startIndex < 0 {
+		return nil, fmt.Errorf("negative offset")
 	}
 
 	length, err := builtins.IntOperand(c, 3)
@@ -115,13 +186,13 @@ func builtinSubstring(a, b, c ast.Value) (ast.Value, error) {
 
 	var s ast.String
 	if length < 0 {
-		s = ast.String(base[startIndex:])
+		s = ast.String(runes[startIndex:])
 	} else {
 		upto := startIndex + length
-		if len(base) < upto {
-			upto = len(base)
+		if len(runes) < upto {
+			upto = len(runes)
 		}
-		s = ast.String(base[startIndex:upto])
+		s = ast.String(runes[startIndex:upto])
 	}
 
 	return s, nil
@@ -197,11 +268,11 @@ func builtinSplit(a, b ast.Value) (ast.Value, error) {
 		return nil, err
 	}
 	elems := strings.Split(string(s), string(d))
-	arr := make(ast.Array, len(elems))
-	for i := range arr {
+	arr := make([]*ast.Term, len(elems))
+	for i := range elems {
 		arr[i] = ast.StringTerm(elems[i])
 	}
-	return arr, nil
+	return ast.NewArray(arr...), nil
 }
 
 func builtinReplace(a, b, c ast.Value) (ast.Value, error) {
@@ -223,6 +294,42 @@ func builtinReplace(a, b, c ast.Value) (ast.Value, error) {
 	return ast.String(strings.Replace(string(s), string(old), string(new), -1)), nil
 }
 
+func builtinReplaceN(a, b ast.Value) (ast.Value, error) {
+	patterns, err := builtins.ObjectOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+	keys := patterns.Keys()
+	sort.Slice(keys, func(i, j int) bool { return ast.Compare(keys[i].Value, keys[j].Value) < 0 })
+
+	s, err := builtins.StringOperand(b, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	var oldnewArr []string
+	for _, k := range keys {
+		keyVal, ok := k.Value.(ast.String)
+		if !ok {
+			return nil, builtins.NewOperandErr(1, "non-string key found in pattern object")
+		}
+		val := patterns.Get(k) // cannot be nil
+		strVal, ok := val.Value.(ast.String)
+		if !ok {
+			return nil, builtins.NewOperandErr(1, "non-string value found in pattern object")
+		}
+		oldnewArr = append(oldnewArr, string(keyVal), string(strVal))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	r := strings.NewReplacer(oldnewArr...)
+	replaced := r.Replace(string(s))
+
+	return ast.String(replaced), nil
+}
+
 func builtinTrim(a, b ast.Value) (ast.Value, error) {
 	s, err := builtins.StringOperand(a, 1)
 	if err != nil {
@@ -237,24 +344,91 @@ func builtinTrim(a, b ast.Value) (ast.Value, error) {
 	return ast.String(strings.Trim(string(s), string(c))), nil
 }
 
+func builtinTrimLeft(a, b ast.Value) (ast.Value, error) {
+	s, err := builtins.StringOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := builtins.StringOperand(b, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.String(strings.TrimLeft(string(s), string(c))), nil
+}
+
+func builtinTrimPrefix(a, b ast.Value) (ast.Value, error) {
+	s, err := builtins.StringOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	pre, err := builtins.StringOperand(b, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.String(strings.TrimPrefix(string(s), string(pre))), nil
+}
+
+func builtinTrimRight(a, b ast.Value) (ast.Value, error) {
+	s, err := builtins.StringOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := builtins.StringOperand(b, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.String(strings.TrimRight(string(s), string(c))), nil
+}
+
+func builtinTrimSuffix(a, b ast.Value) (ast.Value, error) {
+	s, err := builtins.StringOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	suf, err := builtins.StringOperand(b, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.String(strings.TrimSuffix(string(s), string(suf))), nil
+}
+
+func builtinTrimSpace(a ast.Value) (ast.Value, error) {
+	s, err := builtins.StringOperand(a, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.String(strings.TrimSpace(string(s))), nil
+}
+
 func builtinSprintf(a, b ast.Value) (ast.Value, error) {
 	s, err := builtins.StringOperand(a, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	astArr, ok := b.(ast.Array)
+	astArr, ok := b.(*ast.Array)
 	if !ok {
 		return nil, builtins.NewOperandTypeErr(2, b, "array")
 	}
 
-	args := make([]interface{}, len(astArr))
+	args := make([]interface{}, astArr.Len())
 
-	for i := range astArr {
-		switch v := astArr[i].Value.(type) {
+	for i := range args {
+		switch v := astArr.Elem(i).Value.(type) {
 		case ast.Number:
 			if n, ok := v.Int(); ok {
 				args[i] = n
+			} else if b, ok := new(big.Int).SetString(v.String(), 10); ok {
+				args[i] = b
 			} else if f, ok := v.Float64(); ok {
 				args[i] = f
 			} else {
@@ -263,17 +437,37 @@ func builtinSprintf(a, b ast.Value) (ast.Value, error) {
 		case ast.String:
 			args[i] = string(v)
 		default:
-			args[i] = astArr[i].String()
+			args[i] = astArr.Elem(i).String()
 		}
 	}
 
 	return ast.String(fmt.Sprintf(string(s), args...)), nil
 }
 
+func builtinReverse(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	s, err := builtins.StringOperand(operands[0].Value, 1)
+	if err != nil {
+		return err
+	}
+
+	sRunes := []rune(string(s))
+	length := len(sRunes)
+	reversedRunes := make([]rune, length)
+
+	for index, r := range sRunes {
+		reversedRunes[length-index-1] = r
+	}
+
+	reversedString := string(reversedRunes)
+
+	return iter(ast.StringTerm(reversedString))
+}
+
 func init() {
 	RegisterFunctionalBuiltin2(ast.FormatInt.Name, builtinFormatInt)
 	RegisterFunctionalBuiltin2(ast.Concat.Name, builtinConcat)
 	RegisterFunctionalBuiltin2(ast.IndexOf.Name, builtinIndexOf)
+	RegisterFunctionalBuiltin2(ast.IndexOfN.Name, builtinIndexOfN)
 	RegisterFunctionalBuiltin3(ast.Substring.Name, builtinSubstring)
 	RegisterFunctionalBuiltin2(ast.Contains.Name, builtinContains)
 	RegisterFunctionalBuiltin2(ast.StartsWith.Name, builtinStartsWith)
@@ -282,6 +476,13 @@ func init() {
 	RegisterFunctionalBuiltin1(ast.Lower.Name, builtinLower)
 	RegisterFunctionalBuiltin2(ast.Split.Name, builtinSplit)
 	RegisterFunctionalBuiltin3(ast.Replace.Name, builtinReplace)
+	RegisterFunctionalBuiltin2(ast.ReplaceN.Name, builtinReplaceN)
 	RegisterFunctionalBuiltin2(ast.Trim.Name, builtinTrim)
+	RegisterFunctionalBuiltin2(ast.TrimLeft.Name, builtinTrimLeft)
+	RegisterFunctionalBuiltin2(ast.TrimPrefix.Name, builtinTrimPrefix)
+	RegisterFunctionalBuiltin2(ast.TrimRight.Name, builtinTrimRight)
+	RegisterFunctionalBuiltin2(ast.TrimSuffix.Name, builtinTrimSuffix)
+	RegisterFunctionalBuiltin1(ast.TrimSpace.Name, builtinTrimSpace)
 	RegisterFunctionalBuiltin2(ast.Sprintf.Name, builtinSprintf)
+	RegisterBuiltinFunc(ast.StringReverse.Name, builtinReverse)
 }

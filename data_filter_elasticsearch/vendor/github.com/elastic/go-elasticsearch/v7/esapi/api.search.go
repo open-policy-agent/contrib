@@ -1,8 +1,21 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -58,6 +71,7 @@ type SearchRequest struct {
 	IgnoreUnavailable          *bool
 	Lenient                    *bool
 	MaxConcurrentShardRequests *int
+	MinCompatibleShardNode     string
 	Preference                 string
 	PreFilterShardSize         *int
 	Query                      string
@@ -104,7 +118,7 @@ func (r SearchRequest) Do(ctx context.Context, transport Transport) (*Response, 
 		params map[string]string
 	)
 
-	method = "GET"
+	method = "POST"
 
 	path.Grow(1 + len(strings.Join(r.Index, ",")) + 1 + len(strings.Join(r.DocumentType, ",")) + 1 + len("_search"))
 	if len(r.Index) > 0 {
@@ -182,6 +196,10 @@ func (r SearchRequest) Do(ctx context.Context, transport Transport) (*Response, 
 
 	if r.MaxConcurrentShardRequests != nil {
 		params["max_concurrent_shard_requests"] = strconv.FormatInt(int64(*r.MaxConcurrentShardRequests), 10)
+	}
+
+	if r.MinCompatibleShardNode != "" {
+		params["min_compatible_shard_node"] = r.MinCompatibleShardNode
 	}
 
 	if r.Preference != "" {
@@ -511,6 +529,14 @@ func (f Search) WithMaxConcurrentShardRequests(v int) func(*SearchRequest) {
 	}
 }
 
+// WithMinCompatibleShardNode - the minimum compatible version that all shards involved in search should have for this request to be successful.
+//
+func (f Search) WithMinCompatibleShardNode(v string) func(*SearchRequest) {
+	return func(r *SearchRequest) {
+		r.MinCompatibleShardNode = v
+	}
+}
+
 // WithPreference - specify the node or shard the operation should be performed on (default: random).
 //
 func (f Search) WithPreference(v string) func(*SearchRequest) {
@@ -519,7 +545,7 @@ func (f Search) WithPreference(v string) func(*SearchRequest) {
 	}
 }
 
-// WithPreFilterShardSize - a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting if the number of shards the search request expands to exceeds the threshold. this filter roundtrip can limit the number of shards significantly if for instance a shard can not match any documents based on it's rewrite method ie. if date filters are mandatory to match but the shard bounds and the query are disjoint..
+// WithPreFilterShardSize - a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting if the number of shards the search request expands to exceeds the threshold. this filter roundtrip can limit the number of shards significantly if for instance a shard can not match any documents based on its rewrite method ie. if date filters are mandatory to match but the shard bounds and the query are disjoint..
 //
 func (f Search) WithPreFilterShardSize(v int) func(*SearchRequest) {
 	return func(r *SearchRequest) {

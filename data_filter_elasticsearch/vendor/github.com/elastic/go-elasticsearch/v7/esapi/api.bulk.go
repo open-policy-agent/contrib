@@ -1,8 +1,21 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -10,6 +23,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -42,6 +56,7 @@ type BulkRequest struct {
 
 	Pipeline            string
 	Refresh             string
+	RequireAlias        *bool
 	Routing             string
 	Source              []string
 	SourceExcludes      []string
@@ -90,6 +105,10 @@ func (r BulkRequest) Do(ctx context.Context, transport Transport) (*Response, er
 
 	if r.Refresh != "" {
 		params["refresh"] = r.Refresh
+	}
+
+	if r.RequireAlias != nil {
+		params["require_alias"] = strconv.FormatBool(*r.RequireAlias)
 	}
 
 	if r.Routing != "" {
@@ -215,11 +234,19 @@ func (f Bulk) WithPipeline(v string) func(*BulkRequest) {
 	}
 }
 
-// WithRefresh - if `true` then refresh the effected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` (the default) then do nothing with refreshes..
+// WithRefresh - if `true` then refresh the affected shards to make this operation visible to search, if `wait_for` then wait for a refresh to make this operation visible to search, if `false` (the default) then do nothing with refreshes..
 //
 func (f Bulk) WithRefresh(v string) func(*BulkRequest) {
 	return func(r *BulkRequest) {
 		r.Refresh = v
+	}
+}
+
+// WithRequireAlias - sets require_alias for all incoming documents. defaults to unset (false).
+//
+func (f Bulk) WithRequireAlias(v bool) func(*BulkRequest) {
+	return func(r *BulkRequest) {
+		r.RequireAlias = &v
 	}
 }
 

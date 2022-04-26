@@ -1,8 +1,21 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -11,11 +24,12 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func newTransformPreviewTransformFunc(t Transport) TransformPreviewTransform {
-	return func(body io.Reader, o ...func(*TransformPreviewTransformRequest)) (*Response, error) {
-		var r = TransformPreviewTransformRequest{Body: body}
+	return func(o ...func(*TransformPreviewTransformRequest)) (*Response, error) {
+		var r = TransformPreviewTransformRequest{}
 		for _, f := range o {
 			f(&r)
 		}
@@ -25,16 +39,20 @@ func newTransformPreviewTransformFunc(t Transport) TransformPreviewTransform {
 
 // ----- API Definition -------------------------------------------------------
 
-// TransformPreviewTransform -
+// TransformPreviewTransform - Previews a transform.
 //
 // See full documentation at https://www.elastic.co/guide/en/elasticsearch/reference/current/preview-transform.html.
 //
-type TransformPreviewTransform func(body io.Reader, o ...func(*TransformPreviewTransformRequest)) (*Response, error)
+type TransformPreviewTransform func(o ...func(*TransformPreviewTransformRequest)) (*Response, error)
 
 // TransformPreviewTransformRequest configures the Transform Preview Transform API request.
 //
 type TransformPreviewTransformRequest struct {
 	Body io.Reader
+
+	TransformID string
+
+	Timeout time.Duration
 
 	Pretty     bool
 	Human      bool
@@ -57,10 +75,21 @@ func (r TransformPreviewTransformRequest) Do(ctx context.Context, transport Tran
 
 	method = "POST"
 
-	path.Grow(len("/_transform/_preview"))
-	path.WriteString("/_transform/_preview")
+	path.Grow(1 + len("_transform") + 1 + len(r.TransformID) + 1 + len("_preview"))
+	path.WriteString("/")
+	path.WriteString("_transform")
+	if r.TransformID != "" {
+		path.WriteString("/")
+		path.WriteString(r.TransformID)
+	}
+	path.WriteString("/")
+	path.WriteString("_preview")
 
 	params = make(map[string]string)
+
+	if r.Timeout != 0 {
+		params["timeout"] = formatDuration(r.Timeout)
+	}
 
 	if r.Pretty {
 		params["pretty"] = "true"
@@ -130,6 +159,30 @@ func (r TransformPreviewTransformRequest) Do(ctx context.Context, transport Tran
 func (f TransformPreviewTransform) WithContext(v context.Context) func(*TransformPreviewTransformRequest) {
 	return func(r *TransformPreviewTransformRequest) {
 		r.ctx = v
+	}
+}
+
+// WithBody - The definition for the transform to preview.
+//
+func (f TransformPreviewTransform) WithBody(v io.Reader) func(*TransformPreviewTransformRequest) {
+	return func(r *TransformPreviewTransformRequest) {
+		r.Body = v
+	}
+}
+
+// WithTransformID - the ID of the transform to preview..
+//
+func (f TransformPreviewTransform) WithTransformID(v string) func(*TransformPreviewTransformRequest) {
+	return func(r *TransformPreviewTransformRequest) {
+		r.TransformID = v
+	}
+}
+
+// WithTimeout - controls the time to wait for the preview.
+//
+func (f TransformPreviewTransform) WithTimeout(v time.Duration) func(*TransformPreviewTransformRequest) {
+	return func(r *TransformPreviewTransformRequest) {
+		r.Timeout = v
 	}
 }
 

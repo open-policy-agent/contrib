@@ -5,10 +5,23 @@
 package topdown
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/open-policy-agent/opa/ast"
 )
+
+// Halt is a special error type that built-in function implementations return to indicate
+// that policy evaluation should stop immediately.
+type Halt struct {
+	Err error
+}
+
+func (h Halt) Error() string {
+	return h.Err.Error()
+}
+
+func (h Halt) Unwrap() error { return h.Err }
 
 // Error is the error type returned by the Eval and Query functions when
 // an evaluation error occurs.
@@ -35,24 +48,39 @@ const (
 	// TypeErr indicates evaluation stopped because an expression was applied to
 	// a value of an inappropriate type.
 	TypeErr string = "eval_type_error"
+
+	// BuiltinErr indicates a built-in function received a semantically invalid
+	// input or encountered some kind of runtime error, e.g., connection
+	// timeout, connection refused, etc.
+	BuiltinErr string = "eval_builtin_error"
+
+	// WithMergeErr indicates that the real and replacement data could not be merged.
+	WithMergeErr string = "eval_with_merge_error"
 )
 
 // IsError returns true if the err is an Error.
 func IsError(err error) bool {
-	_, ok := err.(*Error)
-	return ok
+	var e *Error
+	return errors.As(err, &e)
 }
 
 // IsCancel returns true if err was caused by cancellation.
 func IsCancel(err error) bool {
-	if e, ok := err.(*Error); ok {
-		return e.Code == CancelErr
+	return errors.Is(err, &Error{Code: CancelErr})
+}
+
+// Is allows matching topdown errors using errors.Is (see IsCancel).
+func (e *Error) Is(target error) bool {
+	var t *Error
+	if errors.As(target, &t) {
+		return (t.Code == "" || e.Code == t.Code) &&
+			(t.Message == "" || e.Message == t.Message) &&
+			(t.Location == nil || t.Location.Compare(e.Location) == 0)
 	}
 	return false
 }
 
 func (e *Error) Error() string {
-
 	msg := fmt.Sprintf("%v: %v", e.Code, e.Message)
 
 	if e.Location != nil {
@@ -86,18 +114,26 @@ func objectDocKeyConflictErr(loc *ast.Location) error {
 	}
 }
 
-func documentConflictErr(loc *ast.Location) error {
-	return &Error{
-		Code:     ConflictErr,
-		Location: loc,
-		Message:  "base and virtual document keys must be disjoint",
-	}
-}
-
 func unsupportedBuiltinErr(loc *ast.Location) error {
 	return &Error{
 		Code:     InternalErr,
 		Location: loc,
 		Message:  "unsupported built-in",
+	}
+}
+
+func mergeConflictErr(loc *ast.Location) error {
+	return &Error{
+		Code:     WithMergeErr,
+		Location: loc,
+		Message:  "real and replacement data could not be merged",
+	}
+}
+
+func internalErr(loc *ast.Location, msg string) error {
+	return &Error{
+		Code:     InternalErr,
+		Location: loc,
+		Message:  msg,
 	}
 }

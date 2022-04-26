@@ -7,7 +7,7 @@ package storage
 import (
 	"context"
 
-	"github.com/open-policy-agent/opa/ast"
+	"github.com/open-policy-agent/opa/metrics"
 )
 
 // Transaction defines the interface that identifies a consistent snapshot over
@@ -20,23 +20,28 @@ type Transaction interface {
 type Store interface {
 	Trigger
 	Policy
-	Indexing
 
 	// NewTransaction is called create a new transaction in the store.
-	NewTransaction(ctx context.Context, params ...TransactionParams) (Transaction, error)
+	NewTransaction(context.Context, ...TransactionParams) (Transaction, error)
 
 	// Read is called to fetch a document referred to by path.
-	Read(ctx context.Context, txn Transaction, path Path) (interface{}, error)
+	Read(context.Context, Transaction, Path) (interface{}, error)
 
 	// Write is called to modify a document referred to by path.
-	Write(ctx context.Context, txn Transaction, op PatchOp, path Path, value interface{}) error
+	Write(context.Context, Transaction, PatchOp, Path, interface{}) error
 
 	// Commit is called to finish the transaction. If Commit returns an error, the
 	// transaction must be automatically aborted by the Store implementation.
-	Commit(ctx context.Context, txn Transaction) error
+	Commit(context.Context, Transaction) error
 
 	// Abort is called to cancel the transaction.
-	Abort(ctx context.Context, txn Transaction)
+	Abort(context.Context, Transaction)
+}
+
+// MakeDirer defines the interface a Store could realize to override the
+// generic MakeDir functionality in storage.MakeDir
+type MakeDirer interface {
+	MakeDir(context.Context, Transaction, Path) error
 }
 
 // TransactionParams describes a new transaction.
@@ -44,6 +49,55 @@ type TransactionParams struct {
 
 	// Write indicates if this transaction will perform any write operations.
 	Write bool
+
+	// Context contains key/value pairs passed to triggers.
+	Context *Context
+}
+
+// Context is a simple container for key/value pairs.
+type Context struct {
+	values map[interface{}]interface{}
+}
+
+// NewContext returns a new context object.
+func NewContext() *Context {
+	return &Context{
+		values: map[interface{}]interface{}{},
+	}
+}
+
+// Get returns the key value in the context.
+func (ctx *Context) Get(key interface{}) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	return ctx.values[key]
+}
+
+// Put adds a key/value pair to the context.
+func (ctx *Context) Put(key, value interface{}) {
+	ctx.values[key] = value
+}
+
+var metricsKey = struct{}{}
+
+// WithMetrics allows passing metrics via the Context.
+// It puts the metrics object in the ctx, and returns the same
+// ctx (not a copy) for convenience.
+func (ctx *Context) WithMetrics(m metrics.Metrics) *Context {
+	ctx.values[metricsKey] = m
+	return ctx
+}
+
+// Metrics() allows using a Context's metrics. Returns nil if metrics
+// were not attached to the Context.
+func (ctx *Context) Metrics() metrics.Metrics {
+	if m, ok := ctx.values[metricsKey]; ok {
+		if met, ok := m.(metrics.Metrics); ok {
+			return met
+		}
+	}
+	return nil
 }
 
 // WriteParams specifies the TransactionParams for a write transaction.
@@ -65,7 +119,7 @@ const (
 // interface which may be used if the backend does not support writes.
 type WritesNotSupported struct{}
 
-func (WritesNotSupported) Write(ctx context.Context, txn Transaction, op PatchOp, path Path, value interface{}) error {
+func (WritesNotSupported) Write(context.Context, Transaction, PatchOp, Path, interface{}) error {
 	return writesNotSupportedError()
 }
 
@@ -117,8 +171,9 @@ type DataEvent struct {
 
 // TriggerEvent describes the changes that caused the trigger to be invoked.
 type TriggerEvent struct {
-	Policy []PolicyEvent
-	Data   []DataEvent
+	Policy  []PolicyEvent
+	Data    []DataEvent
+	Context *Context
 }
 
 // IsZero returns true if the TriggerEvent indicates no changes occurred. This
@@ -143,13 +198,13 @@ type TriggerConfig struct {
 	// OnCommit is invoked when a transaction is successfully committed. The
 	// callback is invoked with a handle to the write transaction that
 	// successfully committed before other clients see the changes.
-	OnCommit func(ctx context.Context, txn Transaction, event TriggerEvent)
+	OnCommit func(context.Context, Transaction, TriggerEvent)
 }
 
 // Trigger defines the interface that stores implement to register for change
 // notifications when the store is changed.
 type Trigger interface {
-	Register(ctx context.Context, txn Transaction, config TriggerConfig) (TriggerHandle, error)
+	Register(context.Context, Transaction, TriggerConfig) (TriggerHandle, error)
 }
 
 // TriggersNotSupported provides default implementations of the Trigger
@@ -164,27 +219,5 @@ func (TriggersNotSupported) Register(context.Context, Transaction, TriggerConfig
 // TriggerHandle defines the interface that can be used to unregister triggers that have
 // been registered on a Store.
 type TriggerHandle interface {
-	Unregister(ctx context.Context, txn Transaction)
-}
-
-// IndexIterator defines the interface for iterating over index results.
-type IndexIterator func(*ast.ValueMap) error
-
-// Indexing defines the interface for building an index.
-type Indexing interface {
-	Build(ctx context.Context, txn Transaction, ref ast.Ref) (Index, error)
-}
-
-// Index defines the interface for searching a pre-built index.
-type Index interface {
-	Lookup(ctx context.Context, txn Transaction, value interface{}, iter IndexIterator) error
-}
-
-// IndexingNotSupported provides default implementations of the Indexing
-// interface which may be used if the backend does not support indexing.
-type IndexingNotSupported struct{}
-
-// Build always returns an error indicating indexing is not supported.
-func (IndexingNotSupported) Build(context.Context, Transaction, ast.Ref) (Index, error) {
-	return nil, indexingNotSupportedError()
+	Unregister(context.Context, Transaction)
 }

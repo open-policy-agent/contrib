@@ -1,8 +1,21 @@
-// Licensed to Elasticsearch B.V under one or more agreements.
-// Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
-// See the LICENSE file in the project root for more information.
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// Code generated from specification version 7.5.0: DO NOT EDIT
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// Code generated from specification version 7.17.1: DO NOT EDIT
 
 package esapi
 
@@ -40,6 +53,7 @@ type MsearchTemplateRequest struct {
 
 	Body io.Reader
 
+	CcsMinimizeRoundtrips *bool
 	MaxConcurrentSearches *int
 	RestTotalHitsAsInt    *bool
 	SearchType            string
@@ -64,7 +78,7 @@ func (r MsearchTemplateRequest) Do(ctx context.Context, transport Transport) (*R
 		params map[string]string
 	)
 
-	method = "GET"
+	method = "POST"
 
 	path.Grow(1 + len(strings.Join(r.Index, ",")) + 1 + len(strings.Join(r.DocumentType, ",")) + 1 + len("_msearch") + 1 + len("template"))
 	if len(r.Index) > 0 {
@@ -81,6 +95,10 @@ func (r MsearchTemplateRequest) Do(ctx context.Context, transport Transport) (*R
 	path.WriteString("template")
 
 	params = make(map[string]string)
+
+	if r.CcsMinimizeRoundtrips != nil {
+		params["ccs_minimize_roundtrips"] = strconv.FormatBool(*r.CcsMinimizeRoundtrips)
+	}
 
 	if r.MaxConcurrentSearches != nil {
 		params["max_concurrent_searches"] = strconv.FormatInt(int64(*r.MaxConcurrentSearches), 10)
@@ -182,6 +200,14 @@ func (f MsearchTemplate) WithIndex(v ...string) func(*MsearchTemplateRequest) {
 func (f MsearchTemplate) WithDocumentType(v ...string) func(*MsearchTemplateRequest) {
 	return func(r *MsearchTemplateRequest) {
 		r.DocumentType = v
+	}
+}
+
+// WithCcsMinimizeRoundtrips - indicates whether network round-trips should be minimized as part of cross-cluster search requests execution.
+//
+func (f MsearchTemplate) WithCcsMinimizeRoundtrips(v bool) func(*MsearchTemplateRequest) {
+	return func(r *MsearchTemplateRequest) {
+		r.CcsMinimizeRoundtrips = &v
 	}
 }
 
