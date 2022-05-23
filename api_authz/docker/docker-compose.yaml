@@ -1,6 +1,6 @@
 services:
   opa:
-    image: openpolicyagent/opa:0.35.0-rootless
+    image: openpolicyagent/opa:0.40.0-rootless
     ports:
       - "8181:8181"
     command:
@@ -16,7 +16,7 @@ services:
     depends_on:
       - bundle_server
   api_server:
-    image: openpolicyagent/demo-restful-api:0.3
+    image: openpolicyagent/demo-restful-api:0.2
     ports:
       - "5000:5000"
     environment:
