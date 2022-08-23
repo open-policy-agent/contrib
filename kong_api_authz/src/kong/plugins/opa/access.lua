@@ -59,6 +59,24 @@ end
 -- module
 local _M = {}
 
+local function filterHeaders(headers, wanted_headers)
+    -- "Since the 0.6.9 release, all the header names in the Lua table returned
+    -- are converted to the pure lower-case form by default, unless the raw
+    -- argument is set to true (default to false)."
+    -- So we need to convert the requested header names to lower case too.
+    local filtered_headers = {}
+    if wanted_headers and headers then
+        for _, wanted_header in ipairs(wanted_headers) do
+            local lower_key = string.lower(wanted_header)
+            local value = headers[lower_key]
+            if value then
+                filtered_headers[lower_key] = value
+            end
+        end
+    end
+    return filtered_headers
+end
+
 function _M.execute(conf)
     local authorization = ngx.var.http_authorization
 
@@ -80,6 +98,7 @@ function _M.execute(conf)
         path = ngx.var.upstream_uri,
         split_path = split_path,
         querystring = querystring,
+        headers = filterHeaders(ngx.req.get_headers(), conf.document and conf.document.include_headers)
     }
 
     local status, res = pcall(getDocument, input, conf)

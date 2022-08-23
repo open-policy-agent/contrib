@@ -51,14 +51,18 @@ func WriteOne(ctx context.Context, store Store, op PatchOp, path Path, value int
 
 // MakeDir inserts an empty object at path. If the parent path does not exist,
 // MakeDir will create it recursively.
-func MakeDir(ctx context.Context, store Store, txn Transaction, path Path) (err error) {
+func MakeDir(ctx context.Context, store Store, txn Transaction, path Path) error {
+
+	// Allow the Store implementation to deal with this in its own way.
+	if md, ok := store.(MakeDirer); ok {
+		return md.MakeDir(ctx, txn, path)
+	}
 
 	if len(path) == 0 {
 		return nil
 	}
 
 	node, err := store.Read(ctx, txn, path)
-
 	if err != nil {
 		if !IsNotFound(err) {
 			return err
@@ -66,19 +70,15 @@ func MakeDir(ctx context.Context, store Store, txn Transaction, path Path) (err 
 
 		if err := MakeDir(ctx, store, txn, path[:len(path)-1]); err != nil {
 			return err
-		} else if err := store.Write(ctx, txn, AddOp, path, map[string]interface{}{}); err != nil {
-			return err
 		}
 
-		return nil
+		return store.Write(ctx, txn, AddOp, path, map[string]interface{}{})
 	}
 
 	if _, ok := node.(map[string]interface{}); ok {
 		return nil
 	}
-
 	return writeConflictError(path)
-
 }
 
 // Txn is a convenience function that executes f inside a new transaction
@@ -98,4 +98,29 @@ func Txn(ctx context.Context, store Store, params TransactionParams, f func(Tran
 	}
 
 	return store.Commit(ctx, txn)
+}
+
+// NonEmpty returns a function that tests if a path is non-empty. A
+// path is non-empty if a Read on the path returns a value or a Read
+// on any of the path prefixes returns a non-object value.
+func NonEmpty(ctx context.Context, store Store, txn Transaction) func([]string) (bool, error) {
+	return func(path []string) (bool, error) {
+		if _, err := store.Read(ctx, txn, Path(path)); err == nil {
+			return true, nil
+		} else if !IsNotFound(err) {
+			return false, err
+		}
+		for i := len(path) - 1; i > 0; i-- {
+			val, err := store.Read(ctx, txn, Path(path[:i]))
+			if err != nil && !IsNotFound(err) {
+				return false, err
+			} else if err == nil {
+				if _, ok := val.(map[string]interface{}); ok {
+					return false, nil
+				}
+				return true, nil
+			}
+		}
+		return false, nil
+	}
 }

@@ -96,12 +96,9 @@ func TestCompileTermQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":{"term":{"author":{"_name":"TermQuery","value":"bob"}}}}}`
+	expectedQueryResult := `{"bool":{"should":[{"term":{"author":{"value":"bob"}}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
-	if err != nil {
-		t.Fatalf("Unexpected error while creating query source %v", err)
-	}
+	actualQuerySource := result.Query.Map()
 	actualQueryResult, err := marshalQuery(actualQuerySource)
 	if err != nil {
 		t.Fatalf("Unexpected error while marshalling query: %v", err)
@@ -143,9 +140,9 @@ func TestCompileRangeQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":{"range":{"clearance":{"from":9,"include_lower":false,"include_upper":true,"to":null}}}}}`
+	expectedQueryResult := `{"bool":{"should":[{"range":{"clearance":{"gt":9}}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
+	actualQuerySource := result.Query.Map()
 	if err != nil {
 		t.Fatalf("Unexpected error while creating query source %v", err)
 	}
@@ -190,12 +187,9 @@ func TestCompileMustNotQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":{"bool":{"_name":"BoolMustNotQuery","must_not":{"term":{"clearance":9}}}}}}`
+	expectedQueryResult := `{"bool":{"should":[{"bool":{"must_not":[{"term":{"clearance":{"value":9}}}]}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
-	if err != nil {
-		t.Fatalf("Unexpected error while creating query source %v", err)
-	}
+	actualQuerySource := result.Query.Map()
 	actualQueryResult, err := marshalQuery(actualQuerySource)
 	if err != nil {
 		t.Fatalf("Unexpected error while marshalling query: %v", err)
@@ -237,12 +231,9 @@ func TestCompileQueryStringQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":{"query_string":{"_name":"QueryStringQuery","default_field":"message","query":"*OPA*"}}}}`
+	expectedQueryResult := `{"bool":{"should":[{"query_string":{"default_field":"message","query":"*OPA*"}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
-	if err != nil {
-		t.Fatalf("Unexpected error while creating query source %v", err)
-	}
+	actualQuerySource := result.Query.Map()
 	actualQueryResult, err := marshalQuery(actualQuerySource)
 	if err != nil {
 		t.Fatalf("Unexpected error while marshalling query: %v", err)
@@ -284,12 +275,9 @@ func TestCompileRegexpQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":{"regexp":{"email":{"value":"[a-zA-Z]+@[a-zA-Z]+.org"}}}}}`
+	expectedQueryResult := `{"bool":{"should":[{"regexp":{"email":{"value":"[a-zA-Z]+@[a-zA-Z]+.org"}}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
-	if err != nil {
-		t.Fatalf("Unexpected error while creating query source %v", err)
-	}
+	actualQuerySource := result.Query.Map()
 	actualQueryResult, err := marshalQuery(actualQuerySource)
 	if err != nil {
 		t.Fatalf("Unexpected error while marshalling query: %v", err)
@@ -333,12 +321,9 @@ func TestCompileBoolFilterQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":{"bool":{"_name":"BoolFilterQuery","filter":[{"term":{"author":{"_name":"TermQuery","value":"bob"}}},{"range":{"clearance":{"from":9,"include_lower":false,"include_upper":true,"to":null}}}]}}}}`
+	expectedQueryResult := `{"bool":{"should":[{"bool":{"filter":[{"term":{"author":{"value":"bob"}}},{"range":{"clearance":{"gt":9}}}]}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
-	if err != nil {
-		t.Fatalf("Unexpected error while creating query source %v", err)
-	}
+	actualQuerySource := result.Query.Map()
 	actualQueryResult, err := marshalQuery(actualQuerySource)
 	if err != nil {
 		t.Fatalf("Unexpected error while marshalling query: %v", err)
@@ -386,12 +371,9 @@ func TestCompileBoolShouldQuery(t *testing.T) {
 		t.Fatal("Expected result to be defined")
 	}
 
-	expectedQueryResult := `{"bool":{"_name":"BoolShouldQuery","should":[{"term":{"author":{"_name":"TermQuery","value":"bob"}}},{"range":{"clearance":{"from":9,"include_lower":false,"include_upper":true,"to":null}}}]}}`
+	expectedQueryResult := `{"bool":{"should":[{"term":{"author":{"value":"bob"}}},{"range":{"clearance":{"gt":9}}}]}}`
 
-	actualQuerySource, err := result.Query.Source()
-	if err != nil {
-		t.Fatalf("Unexpected error while creating query source %v", err)
-	}
+	actualQuerySource := result.Query.Map()
 	actualQueryResult, err := marshalQuery(actualQuerySource)
 	if err != nil {
 		t.Fatalf("Unexpected error while marshalling query: %v", err)

@@ -7,8 +7,7 @@ package ast
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/open-policy-agent/opa/util"
+	"math/big"
 )
 
 // Compare returns an integer indicating whether two AST values are less than,
@@ -21,34 +20,38 @@ import (
 // are sorted as follows:
 //
 // nil < Null < Boolean < Number < String < Var < Ref < Array < Object < Set <
-// ArrayComprehension < Expr < Body < Rule < Import < Package < Module.
+// ArrayComprehension < ObjectComprehension < SetComprehension < Expr < SomeDecl
+// < With < Body < Rule < Import < Package < Module.
 //
-// Arrays and Refs are equal iff both a and b have the same length and all
-// corresponding elements are equal. If one element is not equal, the return
-// value is the same as for the first differing element. If all elements are
-// equal but a and b have different lengths, the shorter is considered less than
-// the other.
+// Arrays and Refs are equal if and only if both a and b have the same length
+// and all corresponding elements are equal. If one element is not equal, the
+// return value is the same as for the first differing element. If all elements
+// are equal but a and b have different lengths, the shorter is considered less
+// than the other.
 //
-// Objects are considered equal iff both a and b have the same sorted (key,
-// value) pairs and are of the same length. Other comparisons are consistent but
-// not defined.
+// Objects are considered equal if and only if both a and b have the same sorted
+// (key, value) pairs and are of the same length. Other comparisons are
+// consistent but not defined.
 //
-// Sets are considered equal iff the symmetric difference of a and b is empty.
+// Sets are considered equal if and only if the symmetric difference of a and b
+// is empty.
 // Other comparisons are consistent but not defined.
 func Compare(a, b interface{}) int {
 
 	if t, ok := a.(*Term); ok {
 		if t == nil {
-			return Compare(nil, b)
+			a = nil
+		} else {
+			a = t.Value
 		}
-		return Compare(t.Value, b)
 	}
 
 	if t, ok := b.(*Term); ok {
 		if t == nil {
-			return Compare(a, nil)
+			b = nil
+		} else {
+			b = t.Value
 		}
-		return Compare(a, t.Value)
 	}
 
 	if a == nil {
@@ -83,7 +86,61 @@ func Compare(a, b interface{}) int {
 		}
 		return 1
 	case Number:
-		return util.Compare(json.Number(a), json.Number(b.(Number)))
+		if ai, err := json.Number(a).Int64(); err == nil {
+			if bi, err := json.Number(b.(Number)).Int64(); err == nil {
+				if ai == bi {
+					return 0
+				}
+				if ai < bi {
+					return -1
+				}
+				return 1
+			}
+		}
+
+		// We use big.Rat for comparing big numbers.
+		// It replaces big.Float due to following reason:
+		// big.Float comes with a default precision of 64, and setting a
+		// larger precision results in more memory being allocated
+		// (regardless of the actual number we are parsing with SetString).
+		//
+		// Note: If we're so close to zero that big.Float says we are zero, do
+		// *not* big.Rat).SetString on the original string it'll potentially
+		// take very long.
+		var bigA, bigB *big.Rat
+		fa, ok := new(big.Float).SetString(string(a))
+		if !ok {
+			panic("illegal value")
+		}
+		if fa.IsInt() {
+			if i, _ := fa.Int64(); i == 0 {
+				bigA = new(big.Rat).SetInt64(0)
+			}
+		}
+		if bigA == nil {
+			bigA, ok = new(big.Rat).SetString(string(a))
+			if !ok {
+				panic("illegal value")
+			}
+		}
+
+		fb, ok := new(big.Float).SetString(string(b.(Number)))
+		if !ok {
+			panic("illegal value")
+		}
+		if fb.IsInt() {
+			if i, _ := fb.Int64(); i == 0 {
+				bigB = new(big.Rat).SetInt64(0)
+			}
+		}
+		if bigB == nil {
+			bigB, ok = new(big.Rat).SetString(string(b.(Number)))
+			if !ok {
+				panic("illegal value")
+			}
+		}
+
+		return bigA.Cmp(bigB)
 	case String:
 		b := b.(String)
 		if a.Equal(b) {
@@ -105,11 +162,11 @@ func Compare(a, b interface{}) int {
 	case Ref:
 		b := b.(Ref)
 		return termSliceCompare(a, b)
-	case Array:
-		b := b.(Array)
-		return termSliceCompare(a, b)
-	case Object:
-		b := b.(Object)
+	case *Array:
+		b := b.(*Array)
+		return termSliceCompare(a.elems, b.elems)
+	case *object:
+		b := b.(*object)
 		return a.Compare(b)
 	case Set:
 		b := b.(Set)
@@ -141,6 +198,12 @@ func Compare(a, b interface{}) int {
 	case *Expr:
 		b := b.(*Expr)
 		return a.Compare(b)
+	case *SomeDecl:
+		b := b.(*SomeDecl)
+		return a.Compare(b)
+	case *Every:
+		b := b.(*Every)
+		return a.Compare(b)
 	case *With:
 		b := b.(*With)
 		return a.Compare(b)
@@ -161,6 +224,9 @@ func Compare(a, b interface{}) int {
 		return a.Compare(b)
 	case *Package:
 		b := b.(*Package)
+		return a.Compare(b)
+	case *Annotations:
+		b := b.(*Annotations)
 		return a.Compare(b)
 	case *Module:
 		b := b.(*Module)
@@ -189,7 +255,7 @@ func sortOrder(x interface{}) int {
 		return 4
 	case Ref:
 		return 5
-	case Array:
+	case *Array:
 		return 6
 	case Object:
 		return 7
@@ -207,6 +273,10 @@ func sortOrder(x interface{}) int {
 		return 13
 	case *Expr:
 		return 100
+	case *SomeDecl:
+		return 101
+	case *Every:
+		return 102
 	case *With:
 		return 110
 	case *Head:
@@ -219,6 +289,8 @@ func sortOrder(x interface{}) int {
 		return 1001
 	case *Package:
 		return 1002
+	case *Annotations:
+		return 1003
 	case *Module:
 		return 10000
 	}
@@ -226,6 +298,25 @@ func sortOrder(x interface{}) int {
 }
 
 func importsCompare(a, b []*Import) int {
+	minLen := len(a)
+	if len(b) < minLen {
+		minLen = len(b)
+	}
+	for i := 0; i < minLen; i++ {
+		if cmp := a[i].Compare(b[i]); cmp != 0 {
+			return cmp
+		}
+	}
+	if len(a) < len(b) {
+		return -1
+	}
+	if len(b) < len(a) {
+		return 1
+	}
+	return 0
+}
+
+func annotationsCompare(a, b []*Annotations) int {
 	minLen := len(a)
 	if len(b) < minLen {
 		minLen = len(b)

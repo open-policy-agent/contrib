@@ -6,17 +6,14 @@ package topdown
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/open-policy-agent/opa/ast"
-	"github.com/open-policy-agent/opa/util"
 )
 
 type undo struct {
-	k    *ast.Term
-	u    *bindings
-	next *undo
+	k *ast.Term
+	u *bindings
 }
 
 func (u *undo) Undo() {
@@ -29,39 +26,16 @@ func (u *undo) Undo() {
 		return
 	}
 	u.u.delete(u.k)
-	u.next.Undo()
 }
-
-// sentinel is a binding list that will never be used. The binding list
-// identifier increments from zero.
-var sentinel = newBindings(math.MaxUint64, nil)
 
 type bindings struct {
 	id     uint64
-	values *util.HashMap
+	values bindingsArrayHashmap
 	instr  *Instrumentation
 }
 
 func newBindings(id uint64, instr *Instrumentation) *bindings {
-
-	eq := func(a, b util.T) bool {
-		v1, ok1 := a.(*ast.Term)
-		if ok1 {
-			v2 := b.(*ast.Term)
-			return v1.Equal(v2)
-		}
-		uv1 := a.(*value)
-		uv2 := b.(*value)
-		return uv1.equal(uv2)
-	}
-
-	hash := func(x util.T) int {
-		v := x.(*ast.Term)
-		return v.Hash()
-	}
-
-	values := util.NewHashMap(eq, hash)
-
+	values := newBindingsArrayHashmap()
 	return &bindings{id, values, instr}
 }
 
@@ -69,16 +43,24 @@ func (u *bindings) Iter(caller *bindings, iter func(*ast.Term, *ast.Term) error)
 
 	var err error
 
-	u.values.Iter(func(k, v util.T) bool {
+	u.values.Iter(func(k *ast.Term, v value) bool {
 		if err != nil {
 			return true
 		}
-		term := k.(*ast.Term)
-		err = iter(term, u.PlugNamespaced(term, caller))
+		err = iter(k, u.PlugNamespaced(k, caller))
+
 		return false
 	})
 
 	return err
+}
+
+func (u *bindings) Namespace(x ast.Node, caller *bindings) {
+	vis := namespacingVisitor{
+		b:      u,
+		caller: caller,
+	}
+	ast.NewGenericVisitor(vis.Visit).Walk(x)
 }
 
 func (u *bindings) Plug(a *ast.Term) *ast.Term {
@@ -88,8 +70,11 @@ func (u *bindings) Plug(a *ast.Term) *ast.Term {
 func (u *bindings) PlugNamespaced(a *ast.Term, caller *bindings) *ast.Term {
 	if u != nil {
 		u.instr.startTimer(evalOpPlug)
-		defer u.instr.stopTimer(evalOpPlug)
+		t := u.plugNamespaced(a, caller)
+		u.instr.stopTimer(evalOpPlug)
+		return t
 	}
+
 	return u.plugNamespaced(a, caller)
 }
 
@@ -101,13 +86,16 @@ func (u *bindings) plugNamespaced(a *ast.Term, caller *bindings) *ast.Term {
 			return next.plugNamespaced(b, caller)
 		}
 		return u.namespaceVar(b, caller)
-	case ast.Array:
-		cpy := *a
-		arr := make(ast.Array, len(v))
-		for i := 0; i < len(arr); i++ {
-			arr[i] = u.plugNamespaced(v[i], caller)
+	case *ast.Array:
+		if a.IsGround() {
+			return a
 		}
-		cpy.Value = arr
+		cpy := *a
+		arr := make([]*ast.Term, v.Len())
+		for i := 0; i < len(arr); i++ {
+			arr[i] = u.plugNamespaced(v.Elem(i), caller)
+		}
+		cpy.Value = ast.NewArray(arr...)
 		return &cpy
 	case ast.Object:
 		if a.IsGround() {
@@ -119,6 +107,9 @@ func (u *bindings) plugNamespaced(a *ast.Term, caller *bindings) *ast.Term {
 		})
 		return &cpy
 	case ast.Set:
+		if a.IsGround() {
+			return a
+		}
 		cpy := *a
 		cpy.Value, _ = v.Map(func(x *ast.Term) (*ast.Term, error) {
 			return u.plugNamespaced(x, caller), nil
@@ -132,81 +123,24 @@ func (u *bindings) plugNamespaced(a *ast.Term, caller *bindings) *ast.Term {
 		}
 		cpy.Value = ref
 		return &cpy
-
-	// NOTE(tsandall): comprehensions are plugged when they're contained in
-	// partial evaluation results. If comprehensions are partially evaluated at
-	// some point, then they will not need to be plugged and these branches can
-	// go away.
-	case *ast.ArrayComprehension:
-		ac := *v
-		ac.Body = u.plugBody(v.Body, caller)
-		ac.Term = u.plugNamespaced(v.Term, caller)
-		cpy := *a
-		cpy.Value = &ac
-		return &cpy
-	case *ast.SetComprehension:
-		sc := *v
-		sc.Body = u.plugBody(v.Body, caller)
-		sc.Term = u.plugNamespaced(v.Term, caller)
-		cpy := *a
-		cpy.Value = &sc
-		return &cpy
-	case *ast.ObjectComprehension:
-		oc := *v
-		oc.Body = u.plugBody(v.Body, caller)
-		oc.Key = u.plugNamespaced(v.Key, caller)
-		oc.Value = u.plugNamespaced(v.Value, caller)
-		cpy := *a
-		cpy.Value = &oc
-		return &cpy
-
 	}
 	return a
 }
 
-// NOTE(tsandall): see note in plugNamespaced about comprehensions.
-func (u *bindings) plugBody(body ast.Body, caller *bindings) ast.Body {
-	cpy := make(ast.Body, len(body))
-	for i := range body {
-		cpy[i] = u.plugExpr(body[i], caller)
-	}
-	return cpy
-}
-
-func (u *bindings) plugExpr(expr *ast.Expr, caller *bindings) *ast.Expr {
-	cpy := *expr
-	switch terms := expr.Terms.(type) {
-	case *ast.Term:
-		cpy.Terms = u.plugNamespaced(terms, caller)
-	case []*ast.Term:
-		sl := make([]*ast.Term, len(terms))
-		sl[0] = terms[0]
-		for i := 1; i < len(sl); i++ {
-			sl[i] = u.plugNamespaced(terms[i], caller)
-		}
-		cpy.Terms = sl
-	}
-	return &cpy
-}
-
-func (u *bindings) bind(a *ast.Term, b *ast.Term, other *bindings) *undo {
-	// See note in apply about non-var terms.
-	_, ok := a.Value.(ast.Var)
-	if !ok {
-		panic("illegal value")
-	}
+func (u *bindings) bind(a *ast.Term, b *ast.Term, other *bindings, und *undo) {
 	u.values.Put(a, value{
 		u: other,
 		v: b,
 	})
-	return &undo{a, u, nil}
+	und.k = a
+	und.u = u
 }
 
 func (u *bindings) apply(a *ast.Term) (*ast.Term, *bindings) {
 	// Early exit for non-var terms. Only vars are bound in the binding list,
 	// so the lookup below will always fail for non-var terms. In some cases,
 	// the lookup may be expensive as it has to hash the term (which for large
-	// inputs can be costly.)
+	// inputs can be costly).
 	_, ok := a.Value.(ast.Var)
 	if !ok {
 		return a, u
@@ -226,11 +160,7 @@ func (u *bindings) get(v *ast.Term) (value, bool) {
 	if u == nil {
 		return value{}, false
 	}
-	r, ok := u.values.Get(v)
-	if !ok {
-		return value{}, false
-	}
-	return r.(value), true
+	return u.values.Get(v)
 }
 
 func (u *bindings) String() string {
@@ -238,7 +168,7 @@ func (u *bindings) String() string {
 		return "()"
 	}
 	var buf []string
-	u.values.Iter(func(a, b util.T) bool {
+	u.values.Iter(func(a *ast.Term, b value) bool {
 		buf = append(buf, fmt.Sprintf("%v: %v", a, b))
 		return false
 	})
@@ -274,4 +204,197 @@ func (v value) equal(other *value) bool {
 		return v.v.Equal(other.v)
 	}
 	return false
+}
+
+type namespacingVisitor struct {
+	b      *bindings
+	caller *bindings
+}
+
+func (vis namespacingVisitor) Visit(x interface{}) bool {
+	switch x := x.(type) {
+	case *ast.ArrayComprehension:
+		x.Term = vis.namespaceTerm(x.Term)
+		ast.NewGenericVisitor(vis.Visit).Walk(x.Body)
+		return true
+	case *ast.SetComprehension:
+		x.Term = vis.namespaceTerm(x.Term)
+		ast.NewGenericVisitor(vis.Visit).Walk(x.Body)
+		return true
+	case *ast.ObjectComprehension:
+		x.Key = vis.namespaceTerm(x.Key)
+		x.Value = vis.namespaceTerm(x.Value)
+		ast.NewGenericVisitor(vis.Visit).Walk(x.Body)
+		return true
+	case *ast.Expr:
+		switch terms := x.Terms.(type) {
+		case []*ast.Term:
+			for i := 1; i < len(terms); i++ {
+				terms[i] = vis.namespaceTerm(terms[i])
+			}
+		case *ast.Term:
+			x.Terms = vis.namespaceTerm(terms)
+		}
+		for _, w := range x.With {
+			w.Target = vis.namespaceTerm(w.Target)
+			w.Value = vis.namespaceTerm(w.Value)
+		}
+	}
+	return false
+}
+
+func (vis namespacingVisitor) namespaceTerm(a *ast.Term) *ast.Term {
+	switch v := a.Value.(type) {
+	case ast.Var:
+		return vis.b.namespaceVar(a, vis.caller)
+	case *ast.Array:
+		if a.IsGround() {
+			return a
+		}
+		cpy := *a
+		arr := make([]*ast.Term, v.Len())
+		for i := 0; i < len(arr); i++ {
+			arr[i] = vis.namespaceTerm(v.Elem(i))
+		}
+		cpy.Value = ast.NewArray(arr...)
+		return &cpy
+	case ast.Object:
+		if a.IsGround() {
+			return a
+		}
+		cpy := *a
+		cpy.Value, _ = v.Map(func(k, v *ast.Term) (*ast.Term, *ast.Term, error) {
+			return vis.namespaceTerm(k), vis.namespaceTerm(v), nil
+		})
+		return &cpy
+	case ast.Set:
+		if a.IsGround() {
+			return a
+		}
+		cpy := *a
+		cpy.Value, _ = v.Map(func(x *ast.Term) (*ast.Term, error) {
+			return vis.namespaceTerm(x), nil
+		})
+		return &cpy
+	case ast.Ref:
+		cpy := *a
+		ref := make(ast.Ref, len(v))
+		for i := 0; i < len(ref); i++ {
+			ref[i] = vis.namespaceTerm(v[i])
+		}
+		cpy.Value = ref
+		return &cpy
+	}
+	return a
+}
+
+const maxLinearScan = 16
+
+// bindingsArrayHashMap uses an array with linear scan instead
+// of a hash map for smaller # of entries. Hash maps start to
+// show off their performance advantage only after 16 keys.
+type bindingsArrayHashmap struct {
+	n int // Entries in the array.
+	a *[maxLinearScan]bindingArrayKeyValue
+	m map[ast.Var]bindingArrayKeyValue
+}
+
+type bindingArrayKeyValue struct {
+	key   *ast.Term
+	value value
+}
+
+func newBindingsArrayHashmap() bindingsArrayHashmap {
+	return bindingsArrayHashmap{}
+}
+
+func (b *bindingsArrayHashmap) Put(key *ast.Term, value value) {
+	if b.m == nil {
+		if b.a == nil {
+			b.a = new([maxLinearScan]bindingArrayKeyValue)
+		} else if i := b.find(key); i >= 0 {
+			(*b.a)[i].value = value
+			return
+		}
+
+		if b.n < maxLinearScan {
+			(*b.a)[b.n] = bindingArrayKeyValue{key, value}
+			b.n++
+			return
+		}
+
+		// Array is full, revert to using the hash map instead.
+
+		b.m = make(map[ast.Var]bindingArrayKeyValue, maxLinearScan+1)
+		for _, kv := range *b.a {
+			b.m[kv.key.Value.(ast.Var)] = bindingArrayKeyValue{kv.key, kv.value}
+		}
+		b.m[key.Value.(ast.Var)] = bindingArrayKeyValue{key, value}
+
+		b.n = 0
+		return
+	}
+
+	b.m[key.Value.(ast.Var)] = bindingArrayKeyValue{key, value}
+}
+
+func (b *bindingsArrayHashmap) Get(key *ast.Term) (value, bool) {
+	if b.m == nil {
+		if i := b.find(key); i >= 0 {
+			return (*b.a)[i].value, true
+		}
+
+		return value{}, false
+	}
+
+	v, ok := b.m[key.Value.(ast.Var)]
+	if ok {
+		return v.value, true
+	}
+
+	return value{}, false
+}
+
+func (b *bindingsArrayHashmap) Delete(key *ast.Term) {
+	if b.m == nil {
+		if i := b.find(key); i >= 0 {
+			n := b.n - 1
+			if i < n {
+				(*b.a)[i] = (*b.a)[n]
+			}
+
+			b.n = n
+		}
+		return
+	}
+
+	delete(b.m, key.Value.(ast.Var))
+}
+
+func (b *bindingsArrayHashmap) Iter(f func(k *ast.Term, v value) bool) {
+	if b.m == nil {
+		for i := 0; i < b.n; i++ {
+			if f((*b.a)[i].key, (*b.a)[i].value) {
+				return
+			}
+		}
+		return
+	}
+
+	for _, v := range b.m {
+		if f(v.key, v.value) {
+			return
+		}
+	}
+}
+
+func (b *bindingsArrayHashmap) find(key *ast.Term) int {
+	v := key.Value.(ast.Var)
+	for i := 0; i < b.n; i++ {
+		if (*b.a)[i].key.Value.(ast.Var) == v {
+			return i
+		}
+	}
+
+	return -1
 }
