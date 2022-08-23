@@ -1,0 +1,31 @@
+run:
+    tests: false
+linters:
+    disable-all: true
+    enable:
+        - deadcode
+        - errcheck
+        - gosimple
+        - govet
+        - ineffassign
+        - staticcheck
+        - structcheck
+        - typecheck
+        - unused
+        - varcheck
+        - dupl
+        - funlen
+        - goconst
+        - gocyclo
+        - gocritic
+        - goimports
+        - goprintffuncname
+        - gosec
+        - lll
+        - misspell
+        - nakedret
+        - prealloc
+        - unconvert
+        - unparam
+        - golint
+        - godox

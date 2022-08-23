@@ -10,55 +10,73 @@ import (
 	"github.com/open-policy-agent/opa/ast"
 )
 
-var errConflictingInputDoc = fmt.Errorf("conflicting input documents")
-var errBadInputPath = fmt.Errorf("bad input document path")
+var errBadPath = fmt.Errorf("bad document path")
 
-func makeInput(pairs [][2]*ast.Term) (ast.Value, error) {
+func mergeTermWithValues(exist *ast.Term, pairs [][2]*ast.Term) (*ast.Term, error) {
 
-	// Fast-path for empty case.
-	if len(pairs) == 0 {
-		return nil, nil
-	}
+	var result *ast.Term
+	var init bool
 
-	// Fast-path for the root case.
-	if len(pairs) == 1 && pairs[0][0].Value.Compare(ast.InputRootRef) == 0 {
-		return pairs[0][1].Value, nil
-	}
-
-	var input ast.Value
-
-	for _, pair := range pairs {
+	for i, pair := range pairs {
 
 		if err := ast.IsValidImportPath(pair[0].Value); err != nil {
-			return nil, errBadInputPath
+			return nil, errBadPath
 		}
 
-		ref := pair[0].Value.(ast.Ref)
+		target := pair[0].Value.(ast.Ref)
 
-		if len(ref) == 1 {
-			if input != nil {
-				return nil, errConflictingInputDoc
+		// Copy the value if subsequent pairs in the slice would modify it.
+		for j := i + 1; j < len(pairs); j++ {
+			other := pairs[j][0].Value.(ast.Ref)
+			if len(other) > len(target) && other.HasPrefix(target) {
+				pair[1] = pair[1].Copy()
+				break
 			}
-			input = pair[1].Value
+		}
+
+		if len(target) == 1 {
+			result = pair[1]
+			init = true
 		} else {
-			obj := makeTree(ref[1:], pair[1])
-			if input == nil {
-				input = obj
+			if !init {
+				result = exist.Copy()
+				init = true
+			}
+			if result == nil {
+				result = ast.NewTerm(makeTree(target[1:], pair[1]))
 			} else {
-				reqObj, ok := input.(ast.Object)
-				if !ok {
-					return nil, errConflictingInputDoc
+				node := result
+				done := false
+				for i := 1; i < len(target)-1 && !done; i++ {
+					obj, ok := node.Value.(ast.Object)
+					if !ok {
+						result = ast.NewTerm(makeTree(target[i:], pair[1]))
+						done = true
+						continue
+					}
+					if child := obj.Get(target[i]); !isObject(child) {
+						obj.Insert(target[i], ast.NewTerm(makeTree(target[i+1:], pair[1])))
+						done = true
+					} else { // child is object
+						node = child
+					}
 				}
-				input, ok = reqObj.Merge(obj)
-				if !ok {
-					return nil, errConflictingInputDoc
+				if !done {
+					if obj, ok := node.Value.(ast.Object); ok {
+						obj.Insert(target[len(target)-1], pair[1])
+					} else {
+						result = ast.NewTerm(makeTree(target[len(target)-1:], pair[1]))
+					}
 				}
 			}
-
 		}
 	}
 
-	return input, nil
+	if !init {
+		result = exist
+	}
+
+	return result, nil
 }
 
 // makeTree returns an object that represents a document where the value v is
@@ -71,4 +89,12 @@ func makeTree(k ast.Ref, v *ast.Term) ast.Object {
 	}
 	obj = ast.NewObject(ast.Item(k[0], v))
 	return obj
+}
+
+func isObject(x *ast.Term) bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.Value.(ast.Object)
+	return ok
 }

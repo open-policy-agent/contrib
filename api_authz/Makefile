@@ -1,5 +1,5 @@
 REPOSITORY := openpolicyagent/demo-restful-api
-VERSION := 0.2
+VERSION := 0.3
 
 .PHONY: all
 all: image
@@ -20,8 +20,5 @@ push: build
 
 .PHONY: up
 up:
+	opa build docker/policy/example.rego
 	docker-compose -f docker/docker-compose.yaml up
-
-.PHONY: op-token
-up-token:
-	docker-compose -f docker/docker-compose-token.yaml up
