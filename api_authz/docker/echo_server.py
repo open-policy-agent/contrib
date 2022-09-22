@@ -55,7 +55,7 @@ def root(path):
     path_as_array = path.split("/")
     token = request.args["token"] if "token" in request.args else None
     j = check_auth(url, user, request.method, path_as_array, token).get("result", {})
-    if j.get("allow", False):
+    if j.get("allowed", False):
         return "Success: user %s is authorized \n" % user
     return "Error: user %s is not authorized to %s url /%s \n" % (user, request.method, path)
 
