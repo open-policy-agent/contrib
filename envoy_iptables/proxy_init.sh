@@ -56,40 +56,40 @@ if [[ -z "${ENVOY_IN_PORT-}" ]] || [[ -z "${ENVOY_UID-}" ]]; then
 fi
 
 # Create a new chain for redirecting inbound traffic to Envoy port
-iptables -t nat -N ENVOY_IN_REDIRECT                                                    -m comment --comment "envoy/redirect-inbound-chain"
+iptables -t nat -L ENVOY_IN_REDIRECT || iptables -t nat -N ENVOY_IN_REDIRECT                                                    -m comment --comment "envoy/redirect-inbound-chain"
 
 # Skip Envoy for whitelisted ports
 if [[ WHITELIST_PORTS != "" ]]; then
   IFS=,
   for port in ${WHITELIST_PORTS}; do
-    iptables -t nat -A ENVOY_IN_REDIRECT -p tcp --dport ${port} -m conntrack --ctstate NEW,ESTABLISHED -j RETURN  -m comment --comment "envoy/whitelisted-port-ingress"
+    iptables -t nat -C ENVOY_IN_REDIRECT -p tcp --dport ${port} -m conntrack --ctstate NEW,ESTABLISHED -j RETURN  -m comment --comment "envoy/whitelisted-port-ingress" || iptables -t nat -A ENVOY_IN_REDIRECT -p tcp --dport ${port} -m conntrack --ctstate NEW,ESTABLISHED -j RETURN  -m comment --comment "envoy/whitelisted-port-ingress"
   done
 fi
 
-iptables -t nat -A ENVOY_IN_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_IN_PORT}      -m comment --comment "envoy/redirect-to-envoy-inbound-port"
+iptables -t nat -C ENVOY_IN_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_IN_PORT}      -m comment --comment "envoy/redirect-to-envoy-inbound-port"   || iptables -t nat -A ENVOY_IN_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_IN_PORT}      -m comment --comment "envoy/redirect-to-envoy-inbound-port"
 
 # Redirect all inbound traffic to Envoy.
-iptables -t nat -A PREROUTING -p tcp -j ENVOY_IN_REDIRECT                               -m comment --comment "envoy/install-envoy-inbound-prerouting"
+iptables -t nat -C PREROUTING -p tcp -j ENVOY_IN_REDIRECT                               -m comment --comment "envoy/install-envoy-inbound-prerouting" || iptables -t nat -A PREROUTING -p tcp -j ENVOY_IN_REDIRECT                               -m comment --comment "envoy/install-envoy-inbound-prerouting"
 
 if [[ ! -z "${ENVOY_OUT_PORT-}" ]]; then
     # Create a new chain for selectively redirecting outbound packets to Envoy port
-    iptables -t nat -N ENVOY_OUT_REDIRECT                                               -m comment --comment "envoy/redirect-outbound-chain"
+    iptables -t nat -L ENVOY_OUT_REDIRECT                                                                                                       || iptables -t nat -N ENVOY_OUT_REDIRECT                                               -m comment --comment "envoy/redirect-outbound-chain"
 
     # Jump to the ENVOY_OUT_REDIRECT chain from OUTPUT chain for all tcp traffic.
     # '-j RETURN' bypasses Envoy and '-j ENVOY_OUT_REDIRECT' redirects to Envoy.
-    iptables -t nat -A OUTPUT -p tcp -j ENVOY_OUT_REDIRECT                              -m comment --comment "envoy/install-envoy-out-redirect"
+    iptables -t nat -C OUTPUT -p tcp -j ENVOY_OUT_REDIRECT                              -m comment --comment "envoy/install-envoy-out-redirect" || iptables -t nat -A OUTPUT -p tcp -j ENVOY_OUT_REDIRECT                              -m comment --comment "envoy/install-envoy-out-redirect"
 
     # Redirect app calls back to itself via Envoy when using the service VIP or
     # endpoint address, e.g. appN => Envoy (client) => Envoy (server) => appN.
-    iptables -t nat -A ENVOY_OUT_REDIRECT -o lo ! -d 127.0.0.1/32 -j ENVOY_IN_REDIRECT  -m comment --comment "envoy/redirect-implicit-loopback"
+    iptables -t nat -C ENVOY_OUT_REDIRECT -o lo ! -d 127.0.0.1/32 -j ENVOY_IN_REDIRECT  -m comment --comment "envoy/redirect-implicit-loopback" || iptables -t nat -A ENVOY_OUT_REDIRECT -o lo ! -d 127.0.0.1/32 -j ENVOY_IN_REDIRECT  -m comment --comment "envoy/redirect-implicit-loopback"
 
     # Avoid infinite loops. Don't redirect Envoy traffic directly back to Envoy for
     # non-loopback traffic.
-    iptables -t nat -A ENVOY_OUT_REDIRECT -m owner --uid-owner ${ENVOY_UID} -j RETURN   -m comment --comment "envoy/outbound-bypass-envoy"
+    iptables -t nat -C ENVOY_OUT_REDIRECT -m owner --uid-owner ${ENVOY_UID} -j RETURN   -m comment --comment "envoy/outbound-bypass-envoy"      || iptables -t nat -A ENVOY_OUT_REDIRECT -m owner --uid-owner ${ENVOY_UID} -j RETURN   -m comment --comment "envoy/outbound-bypass-envoy"
 
     # Skip redirection for Envoy-aware applications and container-to-container
     # traffic both of which explicitly use localhost.
-    iptables -t nat -A ENVOY_OUT_REDIRECT -d 127.0.0.1/32 -j RETURN                     -m comment --comment "envoy/bypass-explicit-loopback"
+    iptables -t nat -C ENVOY_OUT_REDIRECT -d 127.0.0.1/32 -j RETURN                     -m comment --comment "envoy/bypass-explicit-loopback"   || iptables -t nat -A ENVOY_OUT_REDIRECT -d 127.0.0.1/32 -j RETURN                     -m comment --comment "envoy/bypass-explicit-loopback"
 
     # All outbound traffic will be redirected to Envoy by default. If
     # IP_RANGES_INCLUDE is non-empty, only traffic bound for the destinations
@@ -97,12 +97,12 @@ if [[ ! -z "${ENVOY_OUT_PORT-}" ]]; then
     IFS=,
     if [ "${IP_RANGES_INCLUDE}" != "" ]; then
         for cidr in ${IP_RANGES_INCLUDE}; do
-            iptables -t nat -A ENVOY_OUT_REDIRECT -d ${cidr} -p tcp -j REDIRECT --to-port ${ENVOY_OUT_PORT}    -m comment --comment "envoy/redirect-ip-range-${cidr}"
+            iptables -t nat -C ENVOY_OUT_REDIRECT -d ${cidr} -p tcp -j REDIRECT --to-port ${ENVOY_OUT_PORT}    -m comment --comment "envoy/redirect-ip-range-${cidr}" || iptables -t nat -A ENVOY_OUT_REDIRECT -d ${cidr} -p tcp -j REDIRECT --to-port ${ENVOY_OUT_PORT}    -m comment --comment "envoy/redirect-ip-range-${cidr}"
         done
-        iptables -t nat -A ENVOY_OUT_REDIRECT -p tcp -j RETURN                                                 -m comment --comment "envoy/bypass-default-outbound"
+        iptables -t nat -C ENVOY_OUT_REDIRECT -p tcp -j RETURN                                                 -m comment --comment "envoy/bypass-default-outbound"   || iptables -t nat -A ENVOY_OUT_REDIRECT -p tcp -j RETURN                                                 -m comment --comment "envoy/bypass-default-outbound"
     else
-        iptables -t nat -A ENVOY_OUT_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_OUT_PORT}                   -m comment --comment "envoy/redirect-default-outbound"
-        #iptables -t nat -A ENVOY_OUT_REDIRECT -p tcp -j RETURN                                                 -m comment --comment "envoy/bypass-default-outbound"
+        iptables -t nat -C ENVOY_OUT_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_OUT_PORT}                   -m comment --comment "envoy/redirect-default-outbound" || iptables -t nat -A ENVOY_OUT_REDIRECT -p tcp -j REDIRECT --to-port ${ENVOY_OUT_PORT}                   -m comment --comment "envoy/redirect-default-outbound"
+        #iptables -t nat -C ENVOY_OUT_REDIRECT -p tcp -j RETURN                                                 -m comment --comment "envoy/bypass-default-outbound"  ||iptables -t nat -A ENVOY_OUT_REDIRECT -p tcp -j RETURN                                                 -m comment --comment "envoy/bypass-default-outbound"
     fi
 fi
 
