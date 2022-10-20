@@ -9,15 +9,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aquasecurity/esquery"
+	"github.com/open-policy-agent/opa/sdk"
 	"strings"
+	"time"
 
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 )
-
-// PolicyFileName is the name of the file where the policy is defined.
-const PolicyFileName = "example.rego"
 
 const defaultQuery = "data.example.allow == true"
 
@@ -28,45 +27,36 @@ type Result struct {
 }
 
 // Compile compiles OPA query and partially evaluates it.
-func Compile(ctx context.Context, input map[string]interface{}, policy []byte) (Result, error) {
+func Compile(opa *sdk.OPA, ctx context.Context, input map[string]interface{}) (Result, error) {
 
 	unknowns := []string{"data.elastic"}
 
-	inputBytes, oerr := json.Marshal(input)
-	if oerr != nil {
-		return Result{}, fmt.Errorf("JSON Encoding error %v", oerr)
+	options := sdk.PartialOptions{
+		Now:      time.Now(),
+		Input:    input,
+		Query:    defaultQuery,
+		Unknowns: unknowns,
+		Mapper:   &sdk.RawMapper{},
 	}
 
-	inputTerm, err := ast.ParseTerm(string(inputBytes))
+	p, err := opa.Partial(ctx, options)
 	if err != nil {
 		return Result{}, err
 	}
 
-	r := rego.New(
-		rego.Query(defaultQuery),
-		rego.Module(PolicyFileName, string(policy)),
-		rego.ParsedInput(inputTerm.Value),
-		rego.Unknowns(unknowns),
-	)
-
-	pq, err := r.Partial(ctx)
-	if err != nil {
-		return Result{}, err
-	}
-
-	if len(pq.Queries) == 0 {
+	if len(p.AST.Queries) == 0 {
 		// always deny
 		return Result{Defined: false}, nil
 	}
 
-	for _, query := range pq.Queries {
+	for _, query := range p.AST.Queries {
 		if len(query) == 0 {
 			// always allow
 			return Result{Defined: true}, nil
 		}
 	}
 
-	return processQuery(pq)
+	return processQuery(p.AST)
 }
 
 func processQuery(pq *rego.PartialQueries) (Result, error) {

@@ -1,0 +1,9 @@
+bundles:
+  test:
+    service: test
+    resource: "/bundle.tar.gz"
+services:
+  test:
+    url: "http://localhost:8888"
+decision_logs:
+    console: true
