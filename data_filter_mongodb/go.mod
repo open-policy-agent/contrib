@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/gorilla/mux v1.8.0
-	github.com/open-policy-agent/opa v0.42.0
+	github.com/open-policy-agent/opa v0.43.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.5.0
 	go.mongodb.org/mongo-driver v1.5.1
