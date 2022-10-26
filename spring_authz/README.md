@@ -31,6 +31,13 @@ Add a dependency on the package to your project (`pom.xml`):
 </dependency>
 ```
 
+Or in gradle: (`build.gradle`)
+```gradle
+implementation 'org.openpolicyagent:voter:1.0-SNAPSHOT'
+```
+
+(Make sure you also include `mavenLocal()` in your repositories list)
+
 ## Web Security Configuration
 
 To enable the voter inside your application, you must configure it. [Spring Security](https://docs.spring.io/spring-security/site/docs/4.2.4.RELEASE/reference/htmlsingle/) has sophisticated support for XML and Java-based configuration.
@@ -91,6 +98,13 @@ Run OPA in server mode with file watching enabled:
 ```bash
 opa run -s -w example.rego
 ```
+To view the data going between the application and OPA:
+
+```bash
+opa run -l debug -s -w example.rego
+```
+
+
 
 Test that you can access your application's API:
 
