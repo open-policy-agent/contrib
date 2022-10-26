@@ -36,7 +36,7 @@ Or in gradle: (`build.gradle`)
 implementation 'org.openpolicyagent:voter:1.0-SNAPSHOT'
 ```
 
-(Make sure you also include `mavenLocal()` in your repositories
+(Make sure you also include `mavenLocal()` in your repositories list)
 
 ## Web Security Configuration
 
