@@ -16,20 +16,36 @@ Build the example by running `make build`
 1. Run Elasticsearch (with security turned off - the example assumes http and default credentials).
 Dockerized example:
 ```bash
-docker run -p 9200:9200 -e "xpack.security.enabled=false" -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:8.1.1
+docker run --rm -d -p 9200:9200 -e "xpack.security.enabled=false" -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:8.1.1
 ```
 See Elasticsearch's [Installation docs](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) for other methods of installation.
 
-2. Open a new window and start the example server:
+2. Build the policy bundle
 
-   ```bash
-   ./opa-es-filtering
-   ```
+```shell
+opa build -b policy
+```
+
+This will produce a bundle.tar.gz file from the policy/example.rego file.
+
+3. Run nginx server to serve the bundle.
+   The application will need a bundle server to fetch the policy bundle from. We will use nginx for this.
+
+```shell
+docker run --rm -d --name bundle-server -p 8888:80 -v ${PWD}/bundle.tar.gz:/usr/share/nginx/html/bundle.tar.gz:ro nginx:latest
+```
+
+4. Start the example server.
+This will use the opa-conf.yaml file to configure OPA to download bundles from nginx.
+
+```bash
+./opa-es-filtering
+```
 
    The server listens on `:8080` and exposes two endpoints `/posts` and `/posts/{post_id}`. OPA is loaded with an example policy from the file `example.rego` which has rules related to both these
    endpoints.
 
-3. Open a new window and make a request:
+5. Open a new window and make a request:
 
    ```bash
    curl  -H "Authorization: bob" localhost:8080/posts |  jq .

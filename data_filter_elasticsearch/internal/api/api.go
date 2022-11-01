@@ -5,15 +5,18 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"strings"
-
 	"github.com/aquasecurity/esquery"
 	elastic "github.com/elastic/go-elasticsearch/v8"
+	"github.com/open-policy-agent/opa/logging"
+	"github.com/open-policy-agent/opa/sdk"
+	"log"
+	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
@@ -21,8 +24,6 @@ import (
 )
 
 const (
-	apiCodeNotFound      = "not_found"
-	apiCodeParseError    = "parse_error"
 	apiCodeInternalError = "internal_error"
 	apiCodeNotAuthorized = "not_authorized"
 )
@@ -43,6 +44,7 @@ type ServerAPI struct {
 	router *mux.Router
 	es     *elastic.Client
 	index  string
+	opa    *sdk.OPA
 }
 
 // New return the server's API.
@@ -59,12 +61,27 @@ func New(esClient *elastic.Client, index string) *ServerAPI {
 
 // Run the server.
 func (api *ServerAPI) Run(ctx context.Context) error {
+	fmt.Println("Loading OPA SDK....")
+	config, err := os.ReadFile("opa-conf.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	logger := logging.New()
+	logger.SetLevel(logging.Info)
+
+	opa, err := sdk.New(ctx, sdk.Options{Config: bytes.NewReader(config), Logger: logger})
+	if err != nil {
+		log.Fatal(err)
+	}
+	api.opa = opa
+
 	fmt.Println("Starting server 8080....")
 	return http.ListenAndServe(":8080", api.router)
 }
 
 func (api *ServerAPI) handlGetPosts(w http.ResponseWriter, r *http.Request) {
-	result, err := queryOPA(w, r)
+	result, err := api.queryOPA(w, r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, apiCodeInternalError, err)
 		return
@@ -81,7 +98,7 @@ func (api *ServerAPI) handlGetPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *ServerAPI) handleGetPost(w http.ResponseWriter, r *http.Request) {
-	result, err := queryOPA(w, r)
+	result, err := api.queryOPA(w, r)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, apiCodeInternalError, err)
 		return
@@ -97,7 +114,7 @@ func (api *ServerAPI) handleGetPost(w http.ResponseWriter, r *http.Request) {
 	queryEs(r.Context(), api.es, api.index, combinedQuery, w)
 }
 
-func queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
+func (api *ServerAPI) queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
 
 	user := r.Header.Get("Authorization")
 	path := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -108,13 +125,7 @@ func queryOPA(w http.ResponseWriter, r *http.Request) (opa.Result, error) {
 		"user":   user,
 	}
 
-	// load policy
-	module, err := ioutil.ReadFile(opa.PolicyFileName)
-	if err != nil {
-		return opa.Result{}, fmt.Errorf("failed to read policy: %v", err)
-	}
-
-	return opa.Compile(r.Context(), input, module)
+	return opa.Compile(api.opa, r.Context(), input)
 }
 
 func combineQuery(queryFromHandler esquery.Mappable, queryFromOpa esquery.Mappable) esquery.Mappable {

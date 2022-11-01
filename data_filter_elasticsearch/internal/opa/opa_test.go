@@ -7,14 +7,19 @@ package opa
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/open-policy-agent/opa/sdk"
+	sdktest "github.com/open-policy-agent/opa/sdk/test"
 )
 
 func TestCompileRequestDeniedAlways(t *testing.T) {
 	input := map[string]interface{}{
-		"method": "GET",
-		"path":   []string{"post"},
+		"method": "POST",
+		"path":   []string{"posts"},
 		"user":   "bob",
 	}
 
@@ -26,8 +31,21 @@ func TestCompileRequestDeniedAlways(t *testing.T) {
 		}
 	`
 
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
 	expected := Result{Defined: false}
-	result, err := Compile(context.Background(), input, []byte(policy))
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -53,8 +71,21 @@ func TestCompileRequestAllowedAlways(t *testing.T) {
 		}
 	`
 
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
 	expected := Result{Defined: true}
-	result, err := Compile(context.Background(), input, []byte(policy))
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -86,7 +117,20 @@ func TestCompileTermQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -130,7 +174,20 @@ func TestCompileRangeQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -177,7 +234,20 @@ func TestCompileMustNotQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -221,7 +291,20 @@ func TestCompileQueryStringQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -265,7 +348,20 @@ func TestCompileRegexpQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -311,7 +407,20 @@ func TestCompileBoolFilterQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -361,7 +470,20 @@ func TestCompileBoolShouldQuery(t *testing.T) {
 		}		
 	`
 
-	result, err := Compile(context.Background(), input, []byte(policy))
+	server := sdktest.MustNewServer(
+		sdktest.MockBundle("/bundles/bundle.tar.gz", map[string]string{
+			"rules.rego": policy,
+		}),
+	)
+	defer server.Stop()
+
+	config := opaConfig(server)
+
+	opa, err := sdk.New(context.Background(), sdk.Options{
+		Config: strings.NewReader(config),
+	})
+
+	result, err := Compile(opa, context.Background(), input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -390,4 +512,22 @@ func marshalQuery(x interface{}) (string, error) {
 		return "", err
 	}
 	return string(d), nil
+}
+
+func opaConfig(server *sdktest.Server) string {
+	return fmt.Sprintf(`{
+		"services": {
+			"test": {
+				"url": %q
+			}
+		},
+		"bundles": {
+			"test": {
+				"resource": "/bundles/bundle.tar.gz"
+			}
+		},
+		"decision_logs": {
+			"console": true
+		}
+	}`, server.URL())
 }
