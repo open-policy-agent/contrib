@@ -3,13 +3,13 @@ FROM alpine:latest
 LABEL org.openpolicyagent.name="openpolicyagent/kong-plugin-opa-devcontainer"
 LABEL org.openpolicyagent.description="Development container for kong-plugin-opa"
 
-# Version compatible with Kong 2.0.x
+# Version compatible with Kong 2.8.x
 ENV LUA_VERSION=5.1.5
-ENV LUAROCKS_VERSION=3.3.1
+ENV LUAROCKS_VERSION=3.8.0
 
 # install development tools
 RUN apk add --no-cache --virtual build-essential \
-    make gcc libc-dev readline-dev curl unzip openssl
+    make git gcc libc-dev readline-dev curl unzip openssl
 
 # build and install Lua
 RUN wget -O - http://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz | tar -zxf - \
@@ -26,6 +26,11 @@ RUN wget --no-check-certificate -O - https://luarocks.org/releases/luarocks-${LU
 
 # install luacheck
 RUN luarocks install luacheck
+
+# install luasocket and mobdebug for lua debugging
+# NB: mobdebug rockspec requires git for the install
+RUN luarocks install luasocket
+RUN luarocks install mobdebug
 
 COPY entrypoint.sh /
 ENTRYPOINT [ "/entrypoint.sh" ]

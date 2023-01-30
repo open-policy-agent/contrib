@@ -13,10 +13,12 @@ USER root
 
 # install dependencies
 RUN apk update && \
-  apk add gcc libc-dev && \
+  apk add gcc libc-dev git && \
   luarocks install lua-cjson && \
   luarocks install lua-resty-http && \
-  luarocks install lua-resty-jwt
+  luarocks install lua-resty-jwt && \
+  luarocks install luasocket && \
+  luarocks install mobdebug
 
 # build and install the plugin
 RUN luarocks make
