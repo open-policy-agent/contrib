@@ -16,7 +16,8 @@ local conf = {
 }
 
 -- mock incoming request
-_G.ngx = {var = {}}
+_G.ngx = {var = {}, req = {}}
+_G.ngx.req.get_headers = function() return {} end
 _G.ngx.var.http_authorization = "Bearer JWT_TOKEN"
 
 -- mock kong loggers and responses on forbidden access or error
@@ -25,6 +26,7 @@ _G.kong.response.exit = function(status, body)
   -- value returned by functions on error
   return status
 end
+
 local emptyFunction = function() end
 _G.kong.log.debug = emptyFunction
 _G.kong.log.info = emptyFunction
