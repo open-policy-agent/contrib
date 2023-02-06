@@ -32,5 +32,6 @@ build = {
       ["kong.plugins.opa.access"] = "src/kong/plugins/opa/access.lua",
       ["kong.plugins.opa.handler"] = "src/kong/plugins/opa/handler.lua",
       ["kong.plugins.opa.schema"] = "src/kong/plugins/opa/schema.lua",
+      ["kong.plugins.opa.helpers"] = "src/kong/plugins/opa/helpers.lua",
    },
 }

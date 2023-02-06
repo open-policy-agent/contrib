@@ -17,7 +17,6 @@ local conf = {
 
 -- mock incoming request
 _G.ngx = {var = {}, req = {}}
-_G.ngx.req.get_headers = function() return {} end
 _G.ngx.var.http_authorization = "Bearer JWT_TOKEN"
 
 -- mock kong loggers and responses on forbidden access or error
@@ -31,6 +30,7 @@ local emptyFunction = function() end
 _G.kong.log.debug = emptyFunction
 _G.kong.log.info = emptyFunction
 _G.kong.log.err = emptyFunction
+_G.ngx.req.get_headers = emptyFunction
 
 describe("opa:access", function()
   local access

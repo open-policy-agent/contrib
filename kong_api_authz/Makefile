@@ -36,7 +36,7 @@ verify:
 	$(call docker-compose-test,run sut)
 	$(call docker-compose-test,down -v --rmi local)
 
-# Delete all files that are created by running make, 
+# Delete all files that are created by running make,
 # including devcontainer image build for running Makefile commands
 clean: mostlyclean docker-rm-devcontainer
 
