@@ -59,7 +59,7 @@ function _M.execute(conf)
 
     if not status then
         kong.log.err("Failed to get document: ", res)
-        return kong.response.exit(500, [[{"message":"Oops, something went wrong"}]])
+        return kong.response.exit(500, [[{"message":"An error occurred while authorizing the request."}]])
     end
 
     -- when the policy fail, 'result' is omitted
