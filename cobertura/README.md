@@ -21,7 +21,7 @@ $ python opa_coverage_to_cobertura.py coverage.json coverage.xml
 **Output**
 ```xml
 <?xml version='1.0' encoding='utf-8'?>
-<coverage lines-covered="4" line-rate="0.6665000000000001" lines-valid="6" complexity="0" version="0.1" timestamp="1683450316053">
+<coverage lines-covered="4" line-rate="0.6665000000000001" lines-valid="6" complexity="0" version="0.1" timestamp="1683450657055">
   <packages>
     <package complexity="0" line-rate="0.6665000000000001" name="">
       <classes>
@@ -31,12 +31,14 @@ $ python opa_coverage_to_cobertura.py coverage.json coverage.xml
             <line number="3" hits="1" />
             <line number="4" hits="1" />
             <line number="7" hits="0" />
+            <line number="8" hits="0" />
           </lines>
         </class>
         <class complexity="0" line-rate="1.0" filename="example/policy_test.rego" name="example/policy_test.rego">
           <methods />
           <lines>
             <line number="3" hits="1" />
+            <line number="4" hits="1" />
           </lines>
         </class>
       </classes>

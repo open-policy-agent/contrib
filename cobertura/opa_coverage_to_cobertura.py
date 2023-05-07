@@ -76,7 +76,7 @@ def generate_package(coverage: OPACoverage) -> ET.Element:
         line_data = ET.Element("lines")
         class_data.append(line_data)
         cover_map = {}
-        max_line = 0
+        max_line = 1
         for c in data.covered:
             if isinstance(c, dict):
                 c = LineCoverage(**c)
@@ -97,7 +97,7 @@ def generate_package(coverage: OPACoverage) -> ET.Element:
             max_line = max(max_line, c.end.row)
             for i in range(c.start.row, c.end.row+1):
                 cover_map[i] = 0
-        for i in range(max_line):
+        for i in range(1, max_line+1):
             if cover_map.get(i) is None:
                 continue
             ET.SubElement(line_data, "line", attrib={
