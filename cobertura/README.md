@@ -9,9 +9,6 @@ Cobertura is one of the supported report formats for
 [Jenkins Coverage API plugin](https://github.com/jenkinsci/code-coverage-api-plugin), which is widely used.
 
 ## Example
-
-Simply pipe the output of `opa test --coverage` into `opa eval` with the `simplecov.rego` file loaded:
-
 1. generate json format coverage result with `--coverage` and pipe it into a file
 2. call `python opa_coverage_to_cobertura.py <input json> <output xml>` to generate xml format coverage report
 ```shell
