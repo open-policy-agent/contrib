@@ -7,6 +7,9 @@ local conf = {
     connection = {
       timeout = 5,
       pool = 1,
+      connect_timeout = 10,
+      send_timeout = 20,
+      read_timeout = 30,
     }
   },
   policy = {

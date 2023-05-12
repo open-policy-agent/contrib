@@ -1,0 +1,8 @@
+[
+  {
+    "name": "opaProxy",
+    "listen": "[::]:8181",
+    "upstream": "opa:8181",
+    "enabled": true
+  }
+]

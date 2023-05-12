@@ -53,6 +53,24 @@ return {
                           default = 10,
                         },
                       },
+                      {
+                        read_timeout = {
+                          type = "number",
+                          default = 1000,
+                        },
+                      },
+                      {
+                        send_timeout = {
+                          type = "number",
+                          default = 1000,
+                        },
+                      },
+                      {
+                        connect_timeout = {
+                          type = "number",
+                          default = 1000,
+                        },
+                      }
                     },
                   },
                 },

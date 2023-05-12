@@ -6,12 +6,13 @@ services:
     volumes:
       # Import postman collection, environment and `wait-for-` script
       - ./testdata/postman:/etc/newman:ro
-    entrypoint: ["/etc/newman/wait-for-services.sh", "kong:8001", "opa:8181", "httpbin:80"]
+    entrypoint: ["/etc/newman/wait-for-services.sh", "kong:8001", "opa:8181", "httpbin:80", "opa-proxy:8474"]
     command: ["run", "kong-plugin-opa.integration_tests.postman_collection.json", "-e", "docker.postman_environment.json"]
     depends_on: # will start only services required for integration tests
       - kong
       - opa
       - httpbin
+      - opa-proxy
 
   kong:
     volumes:
@@ -25,12 +26,26 @@ services:
   opa:
     working_dir: /bundle
     volumes:
-      # Load policies for tests 
+      # Load policies for tests
       - ./testdata/opa/bundle:/bundle:ro
     command: "run --server --bundle . --log-level debug --log-format text"
-  
+
   # Mock upstream service
   httpbin:
     image: kennethreitz/httpbin
     ports:
       - "80:80"
+
+  # proxy requests to OPA with toxiproxy to allow simulation of high latency call to OPA
+  opa-proxy:
+    image: ghcr.io/shopify/toxiproxy:2.5.0
+    command:
+      - "-host=0.0.0.0"
+      - "-config"
+      - "/config/toxiproxy.json"
+    depends_on:
+      - opa
+    ports:
+      - "8474:8474"
+    volumes:
+      - ./toxiproxy.json:/config/toxiproxy.json:ro

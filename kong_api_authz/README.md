@@ -92,16 +92,19 @@ Here's a list of all the parameters which can be used in this plugin's configura
 
 > _required fields are in bold_
 
-form parameter | default | description
---- | --- | ---
-`config.server.protocol` | _http_ | The communication protocol to use with OPA Server (`http` or `https`)
+form parameter | default     | description
+--- |-------------| ---
+`config.server.protocol` | _http_      | The communication protocol to use with OPA Server (`http` or `https`)
 `config.server.host` | _localhost_ | The OPA DNS or IP address
-`config.server.port` | _8181_ | The port on wich OPA is listening
-`config.server.connection.timeout` | _60_ | For the connection with the OPA server: the maximal idle timeout (ms)
-`config.server.connection.pool` | _10_ | For the connection with the OPA server: the maximum number of connections in the pool
-`config.document.include_headers` | | Names of request headers to include in the document that is sent to OPA (in the document, all header names will be lower case).
-`config.policy.base_path` | _v1/data_ | The OPA DATA API base path
-**`config.policy.decision`** | | The path to the OPA rule to evaluate
+`config.server.port` | _8181_      | The port on wich OPA is listening
+`config.server.connection.timeout` | _60_        | For the connection with the OPA server: the maximum idle timeout (ms) before a pooled connection is closed
+`config.server.connection.pool` | _10_        | For the connection with the OPA server: the maximum number of connections in the pool
+`config.server.connection.connect_timeout` | _1000_      | For the connection with the OPA server: the maximum connect timeout (ms).  This applies to new connections that are not already pooled/open.
+`config.server.connection.send_timeout` | _1000_      | For the connection with the OPA server: the maximum send timeout (ms).  This can be a useful control to guard against excessive context information being sent to OPA as input.
+`config.server.connection.read_timeout` | _1000_      | For the connection with the OPA server: the maximum read timeout (ms).  This can be a useful control to guard against expensive OPA policies being used.
+`config.document.include_headers` |             | Names of request headers to include in the document that is sent to OPA (in the document, all header names will be lower case).
+`config.policy.base_path` | _v1/data_   | The OPA DATA API base path
+**`config.policy.decision`** |             | The path to the OPA rule to evaluate
 
 ---
 
