@@ -5,7 +5,8 @@ set -e
 kong_host="$1"
 opa_host="$2"
 httpbin_host="$3"
-shift 3
+opaproxy_host="$4"
+shift 4
 cmd="$@"
 
 until $(curl --output /dev/null --silent --head --fail http://$kong_host/status); do
@@ -20,6 +21,11 @@ done
 
 until $(curl --output /dev/null --silent --head --fail http://$httpbin_host/status/200); do
   >&2 echo "Httpbin is unavailable - sleeping"
+  sleep 1
+done
+
+until $(curl --output /dev/null --silent --fail http://$opaproxy_host/proxies); do
+  >&2 echo "Toxiproxy is unavailable - sleeping"
   sleep 1
 done
 

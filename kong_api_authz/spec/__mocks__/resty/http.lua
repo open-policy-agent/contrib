@@ -3,11 +3,25 @@ local _M = {}
 local mt = { __index = _M }
 
 function _M.new(_)
-    return setmetatable({ sock = "", keepalive = true }, mt)
+    return setmetatable({ sock = "", keepalive = true, timeouts = {} }, mt)
+end
+
+function _M.set_timeouts(self, connect_timeout, send_timeout, read_timeout)
+    -- store timeouts for later use in simulation of timeout scenarios
+    self.timeouts = {
+        connect_timeout = connect_timeout,
+        send_timeout = send_timeout,
+        read_timeout = read_timeout,
+    }
 end
 
 function _M.request_uri(self, uri, params)
     local res = {}
+
+    -- mock a timeout
+    if (self.timeouts.read_timeout == 999) then
+        return nil, "error"
+    end
 
     -- mock 400/500 OPA responses
     if (params.body:find("/error")) then

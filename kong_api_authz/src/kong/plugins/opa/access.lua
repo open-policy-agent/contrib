@@ -19,7 +19,11 @@ local function getDocument(input, conf)
         decision = conf.policy.decision
     })
 
-    local res, err = http.new():request_uri(opa_uri, {
+    local resty_http = http.new()
+    resty_http:set_timeouts(conf.server.connection.connect_timeout,
+        conf.server.connection.send_timeout,
+        conf.server.connection.read_timeout)
+    local res, err = resty_http:request_uri(opa_uri, {
         method = "POST",
         body = json_body,
         headers = {
@@ -30,6 +34,8 @@ local function getDocument(input, conf)
     })
 
     if err then
+        kong.log.err("Error calling OPA for URI " .. opa_uri ..
+            " ; error: ", err)
         error(err) -- failed to request the endpoint
     end
 

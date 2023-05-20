@@ -7,7 +7,9 @@ services:
         - name: opa
           config:
             server:
-                host: opa
+                host: opa-proxy
+                connection:
+                  read_timeout: 10
             policy:
                 decision: httpapi/authz/allow
       routes:
