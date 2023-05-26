@@ -1,11 +1,11 @@
 # OPA Test Coverage to SonarCloud Format
 
 Example code to transform the OPA test coverage JSON report to
-the [SonarCloud](https://docs.sonarqube.org/9.8/analyzing-source-code/test-coverage/generic-test-data/) coverage report format.
+the [SonarCloud](https://docs.sonarqube.org/latest/analyzing-source-code/test-coverage/generic-test-data/) coverage report format.
 
 ## Why?
 
-SonarCloud allows collecting test coverage data to generate rich reports. Integration can be done using [generic test data format](https://docs.sonarqube.org/9.8/analyzing-source-code/test-coverage/generic-test-data/).
+SonarCloud allows collecting test coverage data to generate rich reports. Integration can be done using [generic test data format](https://docs.sonarqube.org/latest/analyzing-source-code/test-coverage/generic-test-data/).
 
 ## Example
 1. generate json format coverage result with `--coverage` and pipe it into a file

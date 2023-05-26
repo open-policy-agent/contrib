@@ -27,7 +27,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Kubernetes API Client](./k8s_api_client)
 - [Grafana Dashboard](./grafana-dashboard)
 - [OpenAPI Specification for OPA](./open_api)
-- [SonarCloud](./sonarcloud)
+- [SonarCloud Test Coverage Conversion](./sonarcloud)
 
 For a comprehensive list of integrations, see the OPA [ecosystem](https://www.openpolicyagent.org/docs/latest/ecosystem/) page.
 
