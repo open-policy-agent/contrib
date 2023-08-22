@@ -11,4 +11,4 @@ implementations demonstrate how to implement the interfaces, without actually pe
 To create a functional Signer and Verifier, you'll want to look at the [DefaultSigner](https://github.com/godaddy/opa/blob/custom-sign-verify/bundle/sign.go#L46) 
 and [DefaultVerifier](https://github.com/godaddy/opa/blob/custom-sign-verify/bundle/verify.go#L57) implementations in OPA's source.
 
-Use `make build` and `make test` to run this example locally.
+Use `make build` and `make run` to run this example locally.
