@@ -26,7 +26,7 @@ info:
     - **[View the specification in *Swagger UI*](swagger-ui.html)**
   version: 0.28.0
   x-logo:
-    url: 'https://github.com/open-policy-agent/opa/blob/master/docs/website/static/img/logos/opa-horizontal-color.png?raw=true'
+    url: 'https://github.com/open-policy-agent/opa/blob/main/docs/website/static/img/logos/opa-horizontal-color.png?raw=true'
     backgroundColor: '#FFFFFF'
     altText: 'OPA logo'
   contact:
@@ -303,7 +303,7 @@ paths:
         description: The input document (in JSON format)
         required: true
         content:
-          application/x-yaml:
+          application/yaml:
             schema:
               $ref: '#/components/schemas/inputSchema'
       tags:
@@ -337,7 +337,7 @@ paths:
         description: The input document (in JSON format)
         required: true
         content:
-          application/x-yaml:
+          application/yaml:
             schema:
               $ref: '#/components/schemas/webhookInputSchema'
       tags:
@@ -424,7 +424,7 @@ paths:
         description: The test of the query (in JSON format)
         required: true
         content:
-          application/x-yaml:
+          application/yaml:
             schema:
               $ref: '#/components/schemas/qSchema'
       tags:
