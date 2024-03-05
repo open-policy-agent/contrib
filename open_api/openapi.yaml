@@ -524,6 +524,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/bundlesParameter'
         - $ref: '#/components/parameters/pluginsParameter'
+        - $ref: "#/components/parameters/excludePluginParameter"
       tags:
         - Health API
       responses:
@@ -668,6 +669,16 @@ components:
       required: false
       schema:
         type: boolean
+    excludePluginParameter :
+      name: exclude-plugin
+      description: String parameter to exclude a plugin from status checks. Can be added multiple times. Does nothing if plugins is not true. This parameter is useful for special use cases where a plugin depends on the server being fully initialized before it can fully initialize itself.
+      in: query
+      required: false
+      schema:
+        type: array
+        default: [ ]
+        items:
+          type: string
   responses:
     successResult:
       description: Success
