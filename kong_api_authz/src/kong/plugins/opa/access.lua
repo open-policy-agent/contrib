@@ -105,13 +105,13 @@ function _M.execute(conf)
 
     if not status then
         kong.log.err("Failed to get document: ", res)
-        return kong.response.exit(500, [[{"message":"Oops, something went wrong"}]])
+        return kong.response.exit(500, [[{"message":"Oops, something went wrong", "error_code":"ERROR_CODE_2000"}]])
     end
 
     -- when the policy fail, 'result' is omitted
     if not res.result then
         kong.log.info("Access forbidden")
-        return kong.response.exit(403, [[{"message":"Access Forbidden"}]])
+        return kong.response.exit(403, [[{"message":"Access Forbidden", "error_code":"ERROR_CODE_UNAUTHORIZED"}]])
     end
 
     -- access allowed
