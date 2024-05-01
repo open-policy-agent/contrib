@@ -90,6 +90,7 @@ function _M.execute(conf)
     local list_path = split(ngx.var.upstream_uri, "/")
     local split_path = slice(list_path, 2, #list_path)
     local querystring = kong.request.get_query()
+    local body = kong.request.get_body()
 
     -- input document that will be send to opa
     local input = {
@@ -98,6 +99,7 @@ function _M.execute(conf)
         path = ngx.var.upstream_uri,
         split_path = split_path,
         querystring = querystring,
+        body = body,
         headers = filterHeaders(ngx.req.get_headers(), conf.document and conf.document.include_headers)
     }
 
@@ -109,7 +111,7 @@ function _M.execute(conf)
     end
 
     -- when the policy fail, 'result' is omitted
-    if not res.result then
+    if not res.result or not res.result.allow then
         kong.log.info("Access forbidden")
         return kong.response.exit(403, { message = "Access Forbidden", error_code = "ERROR_CODE_UNAUTHORIZED" })
     end
