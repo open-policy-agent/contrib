@@ -16,6 +16,8 @@ import (
 
 func main() {
 	opaEndpoint := flag.String("opa-endpoint", "http://127.0.0.1:8181", "endpoint of opa in form of http://ip:port i.e. http://192.33.0.1:8181")
+	opaAuthorization := flag.String("opa-authorization", "", "Bearer token for OPA authorization")
+	opaTrustedCAFile := flag.String("opa-trusted-cafile", "", "File path to the OPA trusted CA certificate")
 	controllerAddr := flag.String("controller-host", "0.0.0.0", "controller host")
 	// setting default port value to some high port to prevent accidentally block this port in IPTable rules
 	controllerPort := flag.String("controller-port", "33455", "controller port on which it listen on")
@@ -57,12 +59,14 @@ func main() {
 	}
 
 	controllerConfig := controller.Config{
-		OpaEndpoint:     *opaEndpoint,
-		ControllerAddr:  *controllerAddr,
-		ControllerPort:  *controllerPort,
-		WatcherInterval: *watcherInterval,
-		WatcherFlag:     *watcherFlag,
-		WorkerCount:     *workerCount,
+		OpaEndpoint:      *opaEndpoint,
+		ControllerAddr:   *controllerAddr,
+		ControllerPort:   *controllerPort,
+		WatcherInterval:  *watcherInterval,
+		WatcherFlag:      *watcherFlag,
+		WorkerCount:      *workerCount,
+		OpaAuthorization: *opaAuthorization,
+		OpaTrustedCAFile: *opaTrustedCAFile,
 	}
 
 	logger.WithFields(logrus.Fields{

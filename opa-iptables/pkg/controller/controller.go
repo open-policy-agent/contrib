@@ -17,7 +17,7 @@ func New(config Config) *Controller {
 	return &Controller{
 		logger:     logging.GetLogger(),
 		listenAddr: config.ControllerAddr + ":" + config.ControllerPort,
-		opaClient:  opa.New(config.OpaEndpoint, ""),
+		opaClient:  opa.New(config.OpaEndpoint, config.OpaAuthorization, config.OpaTrustedCAFile),
 		w: &watcher{
 			watcherInterval: config.WatcherInterval,
 			watcherState:    make(map[string]*state),
@@ -25,7 +25,7 @@ func New(config Config) *Controller {
 			logger:          logging.GetLogger(),
 		},
 		watcherWorkerCount: config.WorkerCount,
-		watcher:        config.WatcherFlag,
+		watcher:            config.WatcherFlag,
 	}
 }
 

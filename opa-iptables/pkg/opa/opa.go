@@ -2,10 +2,14 @@ package opa
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -35,7 +39,7 @@ type Query interface {
 
 type Data interface {
 	PutData(path string, data []byte) error
-	GetData(path string) ([]byte,error)
+	GetData(path string) ([]byte, error)
 	DeleteData(path string) error
 }
 
@@ -45,11 +49,41 @@ type opaClient struct {
 	client         *http.Client
 }
 
-func New(opaEndpoint string, auth string) Client {
+func New(opaEndpoint string, auth string, opaTrustedCAFile string) Client {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
+	if opaTrustedCAFile != "" {
+		if _, err := os.Stat(opaTrustedCAFile); err == nil {
+			tlsConfig, err := createTLSConfig(opaTrustedCAFile)
+			if err != nil {
+				log.Fatalf("Failed to create TLS config: %v", err)
+			}
+			client.Transport = &http.Transport{
+				TLSClientConfig: tlsConfig,
+			}
+		} else if !os.IsNotExist(err) {
+			log.Fatalf("Failed to check CA file: %v", err)
+		}
+	}
 	return &opaClient{opaEndpoint, auth, client}
+}
+
+func createTLSConfig(opaTrustedCAFile string) (*tls.Config, error) {
+	systemCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load system cert pool: %v", err)
+	}
+	rootCA, err := ioutil.ReadFile(opaTrustedCAFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read root CA certificate: %v", err)
+	}
+	if ok := systemCertPool.AppendCertsFromPEM(rootCA); !ok {
+		return nil, fmt.Errorf("failed to append root CA certificate")
+	}
+	return &tls.Config{
+		RootCAs: systemCertPool,
+	}, nil
 }
 
 func (c *opaClient) DoQuery(path string, input interface{}) (data []byte, err error) {
@@ -67,18 +101,18 @@ func (c *opaClient) DoQuery(path string, input interface{}) (data []byte, err er
 
 func (c *opaClient) PutData(path string, data []byte) error {
 	url := c.opaEndpoint + fmt.Sprintf(documentEndpointFmt, path)
-	_,err := c.do(http.MethodPut, url, data)
+	_, err := c.do(http.MethodPut, url, data)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *opaClient) GetData(path string) ([]byte,error) {
+func (c *opaClient) GetData(path string) ([]byte, error) {
 	url := c.opaEndpoint + fmt.Sprintf(documentEndpointFmt, path)
-	res,err := c.do(http.MethodGet, url, nil)
+	res, err := c.do(http.MethodGet, url, nil)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return res, nil
 }
