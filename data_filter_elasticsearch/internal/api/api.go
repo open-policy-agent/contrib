@@ -9,14 +9,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aquasecurity/esquery"
-	elastic "github.com/elastic/go-elasticsearch/v8"
-	"github.com/open-policy-agent/opa/logging"
-	"github.com/open-policy-agent/opa/sdk"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/aquasecurity/esquery"
+	elastic "github.com/elastic/go-elasticsearch/v8"
+	"github.com/open-policy-agent/opa/logging"
+	"github.com/open-policy-agent/opa/sdk"
 
 	"github.com/gorilla/mux"
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
@@ -125,7 +126,7 @@ func (api *ServerAPI) queryOPA(w http.ResponseWriter, r *http.Request) (opa.Resu
 		"user":   user,
 	}
 
-	return opa.Compile(api.opa, r.Context(), input)
+	return opa.Compile(r.Context(), api.opa, input)
 }
 
 func combineQuery(queryFromHandler esquery.Mappable, queryFromOpa esquery.Mappable) esquery.Mappable {

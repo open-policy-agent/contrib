@@ -45,7 +45,7 @@ func TestCompileRequestDeniedAlways(t *testing.T) {
 	})
 
 	expected := Result{Defined: false}
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -85,7 +85,7 @@ func TestCompileRequestAllowedAlways(t *testing.T) {
 	})
 
 	expected := Result{Defined: true}
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -110,11 +110,11 @@ func TestCompileTermQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		x.author == input.user
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -130,7 +130,7 @@ func TestCompileTermQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -167,11 +167,11 @@ func TestCompileRangeQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		x.clearance > input.clearance
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -187,7 +187,7 @@ func TestCompileRangeQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -227,11 +227,11 @@ func TestCompileMustNotQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		x.clearance != input.clearance
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -247,7 +247,7 @@ func TestCompileMustNotQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -284,11 +284,11 @@ func TestCompileQueryStringQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		contains(x.message, "OPA")
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -304,7 +304,7 @@ func TestCompileQueryStringQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -341,11 +341,11 @@ func TestCompileRegexpQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		re_match("[a-zA-Z]+@[a-zA-Z]+.org", x.email)
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -361,7 +361,7 @@ func TestCompileRegexpQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -399,12 +399,12 @@ func TestCompileBoolFilterQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		x.author == input.user
 			x.clearance > input.clearance
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -420,7 +420,7 @@ func TestCompileBoolFilterQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
@@ -458,7 +458,7 @@ func TestCompileBoolShouldQuery(t *testing.T) {
     		input.path = ["posts"]
 			allowed[x]
 		}
-		
+
 		allowed[x] {
     		x := data.elastic.posts[_]
     		x.author == input.user
@@ -467,7 +467,7 @@ func TestCompileBoolShouldQuery(t *testing.T) {
 		allowed[x] {
     		x := data.elastic.posts[_]
 			x.clearance > input.clearance
-		}		
+		}
 	`
 
 	server := sdktest.MustNewServer(
@@ -483,7 +483,7 @@ func TestCompileBoolShouldQuery(t *testing.T) {
 		Config: strings.NewReader(config),
 	})
 
-	result, err := Compile(opa, context.Background(), input)
+	result, err := Compile(context.Background(), opa, input)
 
 	if err != nil {
 		t.Fatalf("Unexpected error while compiling query: %v", err)
