@@ -8,10 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aquasecurity/esquery"
-	"github.com/open-policy-agent/opa/sdk"
 	"strings"
 	"time"
+
+	"github.com/aquasecurity/esquery"
+	"github.com/open-policy-agent/opa/sdk"
 
 	"github.com/open-policy-agent/contrib/data_filter_elasticsearch/internal/es"
 	"github.com/open-policy-agent/opa/ast"
@@ -27,7 +28,7 @@ type Result struct {
 }
 
 // Compile compiles OPA query and partially evaluates it.
-func Compile(opa *sdk.OPA, ctx context.Context, input map[string]interface{}) (Result, error) {
+func Compile(ctx context.Context, opa *sdk.OPA, input map[string]interface{}) (Result, error) {
 
 	unknowns := []string{"data.elastic"}
 

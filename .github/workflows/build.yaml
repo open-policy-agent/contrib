@@ -25,7 +25,7 @@ jobs:
     - name: Install OPA
       uses: open-policy-agent/setup-opa@v2
       with:
-        version: v0.66.0
+        version: v0.67.0
 
     - name: Make build
       run: PATH=$PATH:$PWD:/home/runner/.local/bin make build
