@@ -1,3 +1,6 @@
+# Since this is a deprecated contrib module, this is not built as part of the main
+# build process, and this file is here only for historical purposes.
+
 VERSION := $(shell ./scripts/get-version.sh)
 REPOSITORY := openpolicyagent/demo-kafka
 
