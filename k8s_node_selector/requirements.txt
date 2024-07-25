@@ -1,5 +1,5 @@
 kubernetes==10.0.1
-requests==2.31.0
+requests==2.32.2
 rope   #dev
 flake8 #dev
 black  #dev 
