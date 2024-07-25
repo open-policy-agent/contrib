@@ -1,5 +1,7 @@
 package kubernetes.api.client
 
+import rego.v1
+
 # This information could be retrieved from the kubernetes API
 # too, but would essentially require a request per API group,
 # so for now use a lookup table for the most common resources.
@@ -22,8 +24,9 @@ resource_group_mapping := {
 
 # Query for given resource/name in provided namespace
 # Example: query_ns("deployments", "my-app", "default")
-query_name_ns(resource, name, namespace) = http.send({
+query_name_ns(resource, name, namespace) := http.send({
 	"url": sprintf("https://kubernetes.default.svc/%v/namespaces/%v/%v/%v", [
+		# regal ignore:external-reference
 		resource_group_mapping[resource],
 		namespace,
 		resource,
@@ -38,8 +41,9 @@ query_name_ns(resource, name, namespace) = http.send({
 # Query for given resource type using label selectors
 # https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
 # Example: query_label_selector_ns("deployments", {"app": "opa-kubernetes-api-client"}, "default")
-query_label_selector_ns(resource, selector, namespace) = http.send({
+query_label_selector_ns(resource, selector, namespace) := http.send({
 	"url": sprintf("https://kubernetes.default.svc/%v/namespaces/%v/%v?labelSelector=%v", [
+		# regal ignore:external-reference
 		resource_group_mapping[resource],
 		namespace,
 		resource,
@@ -53,8 +57,9 @@ query_label_selector_ns(resource, selector, namespace) = http.send({
 
 # Query for all resources of type resource in all namespaces
 # Example: query_all("deployments")
-query_all(resource) = http.send({
+query_all(resource) := http.send({
 	"url": sprintf("https://kubernetes.default.svc/%v/%v", [
+		# regal ignore:external-reference
 		resource_group_mapping[resource],
 		resource,
 	]),
@@ -64,4 +69,4 @@ query_all(resource) = http.send({
 	"raise_error": false,
 })
 
-label_map_to_query_string(map) = concat(",", [str | val := map[key]; str := concat("%3D", [key, val])])
+label_map_to_query_string(map) := concat(",", [str | val := map[key]; str := concat("%3D", [key, val])])

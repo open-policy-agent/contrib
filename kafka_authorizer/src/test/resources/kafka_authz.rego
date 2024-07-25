@@ -1,18 +1,20 @@
 package kafka.authz
 
-default allow = false
+import rego.v1
 
-allow {
+default allow := false
+
+allow if {
 	not deny
 }
 
-deny {
+deny if {
 	is_read_operation
 	topic_contains_pii
 	not consumer_is_whitelisted_for_pii
 }
 
-deny {
+deny if {
 	is_write_operation
 	topic_has_large_fanout
 	not producer_is_whitelisted_for_large_fanout
@@ -24,11 +26,11 @@ deny {
 # be loaded into OPA as raw JSON data.
 ###############################################################################
 
-producer_whitelist = {"large-fanout": {"fanout_producer"}}
+producer_whitelist := {"large-fanout": {"fanout_producer"}}
 
-consumer_whitelist = {"pii": {"pii_consumer"}}
+consumer_whitelist := {"pii": {"pii_consumer"}}
 
-topic_metadata = {
+topic_metadata := {
 	"click-stream": {"tags": ["large-fanout"]},
 	"credit-scores": {"tags": ["pii"]},
 }
@@ -37,48 +39,48 @@ topic_metadata = {
 # Helper rules for checking whitelists.
 ###############################################################################
 
-topic_contains_pii {
-	topic_metadata[topic_name].tags[_] == "pii"
+topic_contains_pii if {
+	"pii" in topic_metadata[topic_name].tags
 }
 
-topic_has_large_fanout {
-	topic_metadata[topic_name].tags[_] == "large-fanout"
+topic_has_large_fanout if {
+	"large-fanout" in topic_metadata[topic_name].tags
 }
 
-consumer_is_whitelisted_for_pii {
-	consumer_whitelist.pii[_] == principal.name
+consumer_is_whitelisted_for_pii if {
+	principal.name in consumer_whitelist.pii
 }
 
-producer_is_whitelisted_for_large_fanout {
-	producer_whitelist["large-fanout"][_] == principal.name
+producer_is_whitelisted_for_large_fanout if {
+	principal.name in producer_whitelist["large-fanout"]
 }
 
 ###############################################################################
 # Helper rules for input processing.
 ###############################################################################
 
-is_write_operation {
+is_write_operation if {
 	input.operation.name == "Write"
 }
 
-is_read_operation {
+is_read_operation if {
 	input.operation.name == "Read"
 }
 
-is_topic_resource {
+is_topic_resource if {
 	input.resource.resourceType.name == "Topic"
 }
 
-topic_name = input.resource.name {
+topic_name := input.resource.name if {
 	is_topic_resource
 }
 
-principal = {"fqn": parsed.CN, "name": cn_parts[0]} {
+principal := {"fqn": parsed.CN, "name": cn_parts[0]} if {
 	parsed := parse_user(urlquery.decode(input.session.sanitizedUser))
 	cn_parts := split(parsed.CN, ".")
 }
 
-parse_user(user) = {key: value |
+parse_user(user) := {key: value |
 	parts := split(user, ",")
 	[key, value] := split(parts[_], "=")
 }

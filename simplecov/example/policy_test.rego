@@ -1,5 +1,9 @@
-package policy
+package policy_test
 
-test_deny {
-    deny with input as {"foo": "bar"}
+import rego.v1
+
+import data.policy
+
+test_deny if {
+	policy.deny with input as {"foo": "bar"}
 }

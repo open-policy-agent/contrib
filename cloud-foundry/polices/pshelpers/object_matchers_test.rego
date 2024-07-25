@@ -1,29 +1,29 @@
-package pshelpers
+package pshelpers_test
 
-test_path_value_match_with_correct_path_value  {
-  expected := true
-  inputObject = {"random": {"stuff": "moo" }}
-  path := ["random", "stuff"]
-  value := "moo" 
-  actual := path_value_match(inputObject, path, value)
-  actual == expected
+import rego.v1
+
+import data.pshelpers
+
+test_path_value_match_with_correct_path_value if {
+	input_object = {"random": {"stuff": "moo"}}
+	path := ["random", "stuff"]
+	value := "moo"
+
+	pshelpers.path_value_match(input_object, path, value)
 }
 
+test_path_value_match_incorrect_path if {
+	input_object = {"random": {"stuff": "moo"}}
+	path := ["incorrect", "path"]
+	value := "moo"
 
-test_path_value_match_incorrect_path {
-  expected := false
-  inputObject = {"random": {"stuff": "moo" }}
-  path := ["incorrect", "path"]
-  value := "moo" 
-  actual := path_value_match(inputObject, path, value)
-  actual == expected
+	not pshelpers.path_value_match(input_object, path, value)
 }
 
-test_path_value_match_incorrect_value {
-  expected := false
-  inputObject = {"random": {"stuff": "moo" }}
-  path := ["random", "stuff"]
-  value := "incorrect" 
-  actual := path_value_match(inputObject, path, value)
-  actual == expected
+test_path_value_match_incorrect_value if {
+	input_object = {"random": {"stuff": "moo"}}
+	path := ["random", "stuff"]
+	value := "incorrect"
+
+	not pshelpers.path_value_match(input_object, path, value)
 }

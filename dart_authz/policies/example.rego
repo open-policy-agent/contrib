@@ -1,62 +1,58 @@
 package system
 
-main = allow
+import rego.v1
 
-default allow = false
+# regal ignore:pointless-reassignment
+main := allow
 
-allow {
+default allow := false
+
+allow if {
 	input.method = "GET"
-    input.path = [""]
+	input.path = [""]
 }
 
-allow {
+allow if {
 	input.method = "GET"
-    input.path = ["cars"]
-
+	input.path = ["cars"]
 }
 
-allow {
+allow if {
 	input.method = "GET"
 	input.path = ["cars", car_id]
 }
 
-allow {
+allow if {
 	input.method = "PUT"
 	input.path = ["cars", car_id]
-    has_role("manager")
+	has_role("manager")
 }
 
-allow {
+allow if {
 	input.method = "DELETE"
 	input.path = ["cars", car_id]
 	has_role("manager")
 }
 
-allow {
+allow if {
 	input.method = "GET"
 	input.path = ["cars", car_id, "status"]
-    employees[input.user]
+	employees[input.user]
 }
 
-allow {
+allow if {
 	input.method = "PUT"
 	input.path = ["cars", car_id, "status"]
-    has_role("car_admin")
+	has_role("car_admin")
 }
 
-has_role(name) {
-	employee := employees[input.user]
-    employee.roles[name]
+has_role(name) if {
+	employee := employees[input.user] # regal ignore:external-reference
+	employee.roles[name]
 }
 
-employees = {
-	"alice": {
-    	"roles": {"manager", "car_admin"},
-    },
-    "james": {
-    	"roles": {"manager"},
-    },
-    "kelly": {
-    	"roles": {"car_admin"},
-    },
+employees := {
+	"alice": {"roles": {"manager", "car_admin"}},
+	"james": {"roles": {"manager"}},
+	"kelly": {"roles": {"car_admin"}},
 }

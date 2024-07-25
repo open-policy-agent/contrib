@@ -2,24 +2,22 @@
 # in the sudo PAM configuration file.
 package sudo.authz
 
-import input.display_responses
-import input.pull_responses
-import input.sysinfo
+import rego.v1
 
-default allow = false
+default allow := false
 
-allow {
+allow if {
 	# Verify user input.
-	display_responses.last_name = "ramesh"
-	display_responses.secret = "suresh"
+	input.display_responses.last_name == "ramesh"
+	input.display_responses.secret == "suresh"
 
 	# Only allow running on host_id "frontend"
-	pull_responses.files["/etc/host_identity.json"].host_id = "frontend"
+	input.pull_responses.files["/etc/host_identity.json"].host_id == "frontend"
 
 	# Only authorize user "ops"
-	sysinfo.pam_username = "ops"
+	input.sysinfo.pam_username == "ops"
 }
 
-errors["You cannot pass!"] {
+errors contains "You cannot pass!" if {
 	not allow
 }

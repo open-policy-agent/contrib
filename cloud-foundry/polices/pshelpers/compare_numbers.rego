@@ -1,10 +1,8 @@
 package pshelpers
 
-isLimitExceeded(limit, set) = exceeded { 
-  exceedsLimit := [
-    aboveLimit |
-    set[_] > limit
-    aboveLimit := true
-  ]
-  exceeded = count(exceedsLimit) > 0 
+import rego.v1
+
+limit_exceeded(limit, set) if {
+	some item in set
+	item > limit
 }
