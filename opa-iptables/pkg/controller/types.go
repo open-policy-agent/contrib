@@ -10,12 +10,14 @@ import (
 )
 
 type Config struct {
-	OpaEndpoint     string
-	ControllerAddr  string
-	ControllerPort  string
-	WatcherInterval time.Duration
-	WatcherFlag     bool
-	WorkerCount     int
+	OpaEndpoint      string
+	OpaAuthorization string
+	OpaTrustedCAFile string
+	ControllerAddr   string
+	ControllerPort   string
+	WatcherInterval  time.Duration
+	WatcherFlag      bool
+	WorkerCount      int
 }
 
 // Controller is a struct which is used for storing server related data.
