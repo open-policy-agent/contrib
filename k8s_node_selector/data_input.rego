@@ -1,29 +1,23 @@
 package node_selector.testdata
 
-example_namespaces_with_label = { "default": {
-    "apiVersion": "v1",
-    "kind": "Namespace",
-    "metadata": {
-        "creationTimestamp": "2020-01-17T14:18:28Z",
-        "labels": {
-            "agentpool": "pool1",
-        },
-        "name": "default",
-        "resourceVersion": "517",
-        "selfLink": "/api/v1/namespaces/kube-system",
-        "uid": "d20094e6-bdfb-4d7c-a887-a8fd99d9f3dc"
-    },
-    "spec": {
-        "finalizers": [
-            "kubernetes"
-        ]
-    },
-    "status": {
-        "phase": "Active"
-    }
+import rego.v1
+
+example_namespaces_with_label := {"default": {
+	"apiVersion": "v1",
+	"kind": "Namespace",
+	"metadata": {
+		"creationTimestamp": "2020-01-17T14:18:28Z",
+		"labels": {"agentpool": "pool1"},
+		"name": "default",
+		"resourceVersion": "517",
+		"selfLink": "/api/v1/namespaces/kube-system",
+		"uid": "d20094e6-bdfb-4d7c-a887-a8fd99d9f3dc",
+	},
+	"spec": {"finalizers": ["kubernetes"]},
+	"status": {"phase": "Active"},
 }}
 
-example_pod_has_node_selector = {
+example_pod_has_node_selector := {
 	"apiVersion": "admission.k8s.io/v1beta1",
 	"kind": "AdmissionReview",
 	"request": {
@@ -42,9 +36,7 @@ example_pod_has_node_selector = {
 				"uid": "bbfee96d-d98d-11e8-b280-080027868e77",
 			},
 			"spec": {
-				"nodeSelector": {
-					"nodePool": "pool1"
-				},
+				"nodeSelector": {"nodePool": "pool1"},
 				"containers": [{
 					"image": "nginx",
 					"imagePullPolicy": "Always",
@@ -107,7 +99,7 @@ example_pod_has_node_selector = {
 	},
 }
 
-example_pod_has_nonexisting_namespace = {
+example_pod_has_nonexisting_namespace := {
 	"apiVersion": "admission.k8s.io/v1beta1",
 	"kind": "AdmissionReview",
 	"request": {
@@ -188,8 +180,7 @@ example_pod_has_nonexisting_namespace = {
 	},
 }
 
-
-example_pod_doesnt_have_node_selector = {
+example_pod_doesnt_have_node_selector := {
 	"apiVersion": "admission.k8s.io/v1beta1",
 	"kind": "AdmissionReview",
 	"request": {

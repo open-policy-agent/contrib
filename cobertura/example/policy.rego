@@ -1,9 +1,11 @@
 package policy
 
-deny["foo"] {
-    input.foo == "bar"
+import rego.v1
+
+deny contains "foo" if {
+	input.foo == "bar"
 }
 
-deny["bar"] {
-    input.bar == "foo"
+deny contains "bar" if {
+	input.bar == "foo"
 }

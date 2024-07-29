@@ -29,3 +29,11 @@ jobs:
 
     - name: Make build
       run: PATH=$PATH:$PWD:/home/runner/.local/bin make build
+
+    - name: Setup Regal
+      uses: StyraInc/setup-regal@v1
+      with:
+        version: v0.24.0
+
+    - name: Regal Lint
+      run: regal lint --format github .

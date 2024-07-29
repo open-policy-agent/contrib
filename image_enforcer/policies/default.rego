@@ -3,19 +3,18 @@
 # The default policy will not reject any images unless they have been blacklisted.
 # By default, the blacklist is empty.
 
-
 package io.k8s.image_policy
 
-verify = {
-    "apiVersion": "imagepolicy.k8s.io/v1alpha1",
-    "kind": "ImageReview",
-    "status": {
-        "allowed": allow,
-    },
+import rego.v1
+
+verify := {
+	"apiVersion": "imagepolicy.k8s.io/v1alpha1",
+	"kind": "ImageReview",
+	"status": {"allowed": allow},
 }
 
-default allow = false
+default allow := false
 
-allow { not deny }
+allow if not deny
 
-default deny = false
+default deny := false

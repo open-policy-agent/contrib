@@ -1,37 +1,35 @@
-package httpapi.authz
+package httpapi.authz.jwt
 
-default allow = false
+import rego.v1
+
+default allow := false
 
 # Allow users to get their own salaries.
-allow {
-  some username
-  input.method == "GET"
-  input.path = ["finance", "salary", username]
-  token.payload.user == username
-  user_owns_token
+allow if {
+	input.method == "GET"
+	input.path == ["finance", "salary", token.payload.user]
+	user_owns_token
 }
 
 # Allow managers to get their subordinate' salaries.
-allow {
-  some username
-  input.method == "GET"
-  input.path = ["finance", "salary", username]
-  token.payload.subordinates[_] == username
-  user_owns_token
+allow if {
+	some username
+	input.method == "GET"
+	input.path = ["finance", "salary", username]
+	username in token.payload.subordinates
+	user_owns_token
 }
 
 # Allow HR members to get anyone's salary.
-allow {
-  input.method == "GET"
-  input.path = ["finance", "salary", _]
-  token.payload.hr == true
-  user_owns_token
+allow if {
+	input.method == "GET"
+	input.path = ["finance", "salary", _]
+	token.payload.hr == true
+	user_owns_token
 }
 
 # Ensure that the token was issued to the user supplying it.
-user_owns_token { input.user == token.payload.azp }
+user_owns_token if input.user == token.payload.azp
 
 # Helper to get the token payload.
-token = {"payload": payload} {
-  [_, payload, _] := io.jwt.decode(input.token)
-}
+token := {"payload": io.jwt.decode(input.token)[1]}

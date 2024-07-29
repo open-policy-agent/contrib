@@ -1,21 +1,23 @@
 package example
 
+import rego.v1
+
 ### Entry point to the policy.
 ### Matches on incoming request.
 
 # Rule matching collection of posts.
-allow = true {
-    input.method = "GET"
-    input.path = ["posts"]
-    allowed[x]
+allow if {
+	input.method == "GET"
+	input.path == ["posts"]
+	count(allowed) > 0
 }
 
 # Rule matching individual post.
-allow = true {
-    input.method = "GET"
-    input.path = ["posts", post_id]
-    allowed[x]
-    x.id = post_id
+allow if {
+	input.method = "GET"
+	input.path = ["posts", post_id]
+	some x in allowed
+	x.id = post_id
 }
 
 ### Helper rules that implement data filtering & protection policy.
@@ -59,9 +61,9 @@ allow = true {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    x.author == input.user
+allowed contains x if {
+	some x in data.elastic.posts
+	x.author == input.user
 }
 
 ### Simple built-in functions like !=, >, <.
@@ -69,10 +71,14 @@ allowed[x] {
 # Return posts with clearance level greater than 0 and less than equal to 5
 # but no posts from "it".
 
-# OPA Query: lte(data.elastic.posts[_].clearance, 5); gt(data.elastic.posts[_].clearance, 0); neq(data.elastic.posts[_].department, "it")
-# ES  Query 1: {name:clearance from:<nil> to:5 timeZone: includeLower:true includeUpper:true boost:<nil> queryName: format: relation:}
-# ES  Query 2: {name:clearance from:0 to:<nil> timeZone: includeLower:false includeUpper:true boost:<nil> queryName: format: relation:}
-# ES  Query 3: {Query:<nil> mustClauses:[] mustNotClauses:[0xc0002ae240] filterClauses:[] shouldClauses:[] boost:<nil> minimumShouldMatch: adjustPureNegative:<nil> queryName:BoolMustNotQuery}
+# OPA Query: lte(data.elastic.posts[_].clearance, 5); gt(data.elastic.posts[_].clearance, 0);
+#            neq(data.elastic.posts[_].department, "it")
+# ES  Query 1: {name:clearance from:<nil> to:5 timeZone: includeLower:true
+#               includeUpper:true boost:<nil> queryName: format: relation:}
+# ES  Query 2: {name:clearance from:0 to:<nil> timeZone: includeLower:false
+#               includeUpper:true boost:<nil> queryName: format: relation:}
+# ES  Query 3: {Query:<nil> mustClauses:[] mustNotClauses:[0xc0002ae240] filterClauses:[]
+#               shouldClauses:[] boost:<nil> minimumShouldMatch: adjustPureNegative:<nil> queryName:BoolMustNotQuery}
 # Sample Output from Elasticsearch:
 # {
 #   "result": [
@@ -134,11 +140,11 @@ allowed[x] {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    x.clearance <= 5
-    x.clearance > 0
-    x.department != "it"
+allowed contains x if {
+	some x in data.elastic.posts
+	x.clearance <= 5
+	x.clearance > 0
+	x.department != "it"
 }
 
 ### Built-in functions like string contains and regexp.
@@ -146,9 +152,12 @@ allowed[x] {
 # Return posts containing the term "OPA" in their message.
 
 # OPA Query: contains(data.elastic.posts[_].message, "OPA")
-# ES  Query: {queryString:*OPA* defaultField:message defaultOperator: analyzer: quoteAnalyzer: quoteFieldSuffix: allowLeadingWildcard:<nil> lowercaseExpandedTerms:<nil>
-#             enablePositionIncrements:<nil> analyzeWildcard:<nil> locale: boost:<nil> fuzziness: fuzzyPrefixLength:<nil> fuzzyMaxExpansions:<nil> fuzzyRewrite: phraseSlop:<nil>
-#             fields:[] fieldBoosts:map[] tieBreaker:<nil> rewrite: minimumShouldMatch: lenient:<nil> queryName:QueryStringQuery timeZone: maxDeterminizedStates:<nil> escape:<nil> typ:}
+# ES  Query: {queryString:*OPA* defaultField:message defaultOperator: analyzer: quoteAnalyzer:
+#              quoteFieldSuffix: allowLeadingWildcard:<nil> lowercaseExpandedTerms:<nil>
+#              enablePositionIncrements:<nil> analyzeWildcard:<nil> locale: boost:<nil> fuzziness:
+#              fuzzyPrefixLength:<nil> fuzzyMaxExpansions:<nil> fuzzyRewrite: phraseSlop:<nil>
+#              fields:[] fieldBoosts:map[] tieBreaker:<nil> rewrite: minimumShouldMatch: lenient:<nil>
+#              queryName:QueryStringQuery timeZone: maxDeterminizedStates:<nil> escape:<nil> typ:}
 # Sample Output from Elasticsearch:
 # {
 #   "result": [
@@ -182,15 +191,16 @@ allowed[x] {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    contains(x.message, "OPA")
+allowed contains x if {
+	some x in data.elastic.posts
+	contains(x.message, "OPA")
 }
 
 # Return posts who email address matches the ".org" domain.
 
 # OPA Query: re_match("[a-zA-Z]+@[a-zA-Z]+.org", data.elastic.posts[_].email)
-# ES  Query: {name:email regexp:[a-zA-Z]+@[a-zA-Z]+.org flags: boost:<nil> rewrite: queryName: maxDeterminizedStates:<nil>}
+# ES  Query: {name:email regexp:[a-zA-Z]+@[a-zA-Z]+.org flags: boost:<nil> rewrite:
+#              queryName: maxDeterminizedStates:<nil>}
 # Sample Output from Elasticsearch:
 # {
 #   "result": [
@@ -210,9 +220,9 @@ allowed[x] {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    re_match("[a-zA-Z]+@[a-zA-Z]+.org", x.email)
+allowed contains x if {
+	some x in data.elastic.posts
+	regex.match(`[a-zA-Z]+@[a-zA-Z]+.org`, x.email)
 }
 
 ### Nested examples which include a search.
@@ -220,7 +230,8 @@ allowed[x] {
 # Return posts liked by input.user.
 
 # OPA Query: "bob" = data.elastic.posts[_].likes[_].name
-# ES  Query: {query:0xc00032a800 path:likes scoreMode: boost:<nil> queryName:NestedQuery innerHit:<nil> ignoreUnmapped:0xc0004985f8}
+# ES  Query: {query:0xc00032a800 path:likes scoreMode: boost:<nil> queryName:NestedQuery innerHit:<nil>
+#             ignoreUnmapped:0xc0004985f8}
 # Sample Output from Elasticsearch:
 # {
 #   "result": [
@@ -244,16 +255,17 @@ allowed[x] {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    y := x.likes[_]
-    y.name = input.user
+allowed contains x if {
+	some x in data.elastic.posts
+	some y in x.likes
+	y.name = input.user
 }
 
 # Return posts followed by input.user.
 
 # OPA Query: "bob" = data.elastic.posts[_].followers[_].info.first
-# ES  Query: {query:0xc0001f0b40 path:followers.info scoreMode: boost:<nil> queryName:NestedQuery innerHit:<nil> ignoreUnmapped:0xc00038a67c}
+# ES  Query: {query:0xc0001f0b40 path:followers.info scoreMode: boost:<nil> queryName:NestedQuery innerHit:<nil>
+#             ignoreUnmapped:0xc00038a67c}
 # Sample Output from Elasticsearch:
 # {
 #   "result": [
@@ -280,10 +292,10 @@ allowed[x] {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    y := x.followers[_]
-    y.info.first = input.user
+allowed contains x if {
+	some x in data.elastic.posts
+	some y in x.followers
+	y.info.first == input.user
 }
 
 ### Deeply nested example.
@@ -291,7 +303,8 @@ allowed[x] {
 # Return posts by authors from CA.
 
 # OPA Query: data.elastic.posts[_].stats[_].authorstat.authorbio.state = "CA"
-# ES  Query: {query:0xc0004edd40 path:stats.authorstat.authorbio scoreMode: boost:<nil> queryName:NestedQuery innerHit:<nil> ignoreUnmapped:0xc0004f1471}
+# ES  Query: {query:0xc0004edd40 path:stats.authorstat.authorbio scoreMode: boost:<nil> queryName:NestedQuery
+#             innerHit:<nil> ignoreUnmapped:0xc0004f1471}
 # Sample Output from Elasticsearch:
 # {
 #   "result": [
@@ -321,8 +334,8 @@ allowed[x] {
 #     }
 #   ]
 # }
-allowed[x] {
-    x := data.elastic.posts[_]
-    y := x.stats[_]
-    y.authorstat.authorbio.state = "CA"
+allowed contains x if {
+	some x in data.elastic.posts
+	some y in x.stats
+	y.authorstat.authorbio.state == "CA"
 }

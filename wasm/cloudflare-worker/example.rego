@@ -1,10 +1,12 @@
 package example
 
-allow {
-    input.method = "GET"
+import rego.v1
+
+allow if {
+	input.method == "GET"
 }
 
-allow {
-    input.method = "POST"
-    input.path = "/api"
+allow if {
+	input.method == "POST"
+	input.path == "/api"
 }

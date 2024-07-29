@@ -1,51 +1,52 @@
 package puppet.authz
 
+import rego.v1
+
+# regal ignore:unresolved-import
 import data.git
-import input.puppet.catalog
 
-default allow = false
+default allow := false
 
-allow { not deny }
+allow if not deny
 
-deny {
-    resource = catalog.resources[resource_index]
-    resource.type = "File"
-    startswith(resource.title, "/etc/app")
-    resource_author[resource_index] = email
-    not app_team[email]
+deny if {
+	some resource_index, resource in input.puppet.catalog.resources
+	resource.type == "File"
+	startswith(resource.title, "/etc/app")
+	email := resource_author[resource_index]
+	not email in app_team
 }
 
-deny {
-    resource = catalog.resources[resource_index]
-    resource.type = "File"
-    startswith(resource.title, "/etc/infra")
-    resource_author[resource_index] = email
-    not infra_team[email]
+deny if {
+	some resource_index, resource in input.puppet.catalog.resources
+	resource.type == "File"
+	startswith(resource.title, "/etc/infra")
+	email := resource_author[resource_index]
+	not email in infra_team
 }
 
-resource_author[resource_index] = email {
+resource_author[resource_index] := email if {
+	# For each "File" resource...
+	some resource_index, resource in input.puppet.catalog.resources
+	resource.type == "File"
 
-    # For each "File" resource...
-	resource = catalog.resources[resource_index]
-    resource.type = "File"
+	# Compute the Puppet manifest filename relative to Git repository root...
+	prefix_length := count(source_root_dir)
+	local_file := substring(resource.file, prefix_length, -1)
 
-    # Compute the Puppet manifest filename relative to Git repository root...
-	count(source_root_dir, prefix_length)
-    substring(resource.file, prefix_length, -1, local_file)
-
-    # Lookup author for resource using the line number and Git blame data.
-    blame_entry = git[local_file]
-    email = blame_entry[resource.line]["Author"]
+	# Lookup author for resource using the line number and Git blame data.
+	blame_entry := git[local_file]
+	email := blame_entry[resource.line].Author
 }
 
-app_team = {
-    "alice@acmecorp.com",
-    "bob@acmecorp.com",
+app_team := {
+	"alice@acmecorp.com",
+	"bob@acmecorp.com",
 }
 
-infra_team = {
-    "betty@acmecorp.com",
-    "chris@acmecorp.com",
+infra_team := {
+	"betty@acmecorp.com",
+	"chris@acmecorp.com",
 }
 
-source_root_dir = "/code/"
+source_root_dir := "/code/"

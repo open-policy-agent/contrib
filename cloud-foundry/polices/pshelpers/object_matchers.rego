@@ -1,9 +1,7 @@
 package pshelpers
 
-path_value_match(searchObject, searchPath, searchValue) = exists { 
-  matches := [ foundPath |
-    walk(searchObject, [searchPath, searchValue])
-    foundPath = searchPath
-  ]
-  exists = count(matches) > 0 
+import rego.v1
+
+path_value_match(search_object, search_path, search_value) if {
+	walk(search_object, [search_path, search_value])
 }

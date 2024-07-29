@@ -1,7 +1,11 @@
 package awesome
 
-default awesome = false
+import rego.v1
 
-awesome {
+# regal ignore:rule-name-repeats-package
+default awesome := false
+
+# regal ignore:rule-name-repeats-package
+awesome if {
 	input.awesome
 }

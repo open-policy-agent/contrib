@@ -1,19 +1,21 @@
 package example
 
-default allow = false
+import rego.v1
 
-allow {
-    input.data[input.type][input.resourceName].actions[_] == input.action
+default allow := false
+
+allow if {
+	input.action in input.data[input.type][input.resourceName].actions
 }
 
-allow {
-    input.data[input.type][input.resourceName].actions[_] == "*"
+allow if {
+	"*" in input.data[input.type][input.resourceName].actions
 }
 
-allow {
-    input.data[input.type]["*"].actions[_] == input.action
+allow if {
+	input.action in input.data[input.type]["*"].actions
 }
 
-allow {
-    input.data[input.type]["*"].actions[_] == "*"
+allow if {
+	"*" in input.data[input.type]["*"].actions
 }

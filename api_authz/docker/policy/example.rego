@@ -1,7 +1,9 @@
 package httpapi.authz
 
+import rego.v1
+
 # bob is alice's manager, and betty is charlie's.
-subordinates = {"alice": [], "charlie": [], "bob": ["alice"], "betty": ["charlie"]}
+subordinates := {"alice": [], "charlie": [], "bob": ["alice"], "betty": ["charlie"]}
 
 # HTTP API request
 # input = {
@@ -10,20 +12,18 @@ subordinates = {"alice": [], "charlie": [], "bob": ["alice"], "betty": ["charlie
 #   "method": "GET"
 # }
 
-default allow = false
+default allow := false
 
 # Allow users to get their own salaries.
-allow {
-  some username
-  input.method == "GET"
-  input.path = ["finance", "salary", username]
-  input.user == username
+allow if {
+	input.method == "GET"
+	input.path == ["finance", "salary", input.user]
 }
 
 # Allow managers to get their subordinates' salaries.
-allow {
-  some username
-  input.method == "GET"
-  input.path = ["finance", "salary", username]
-  subordinates[input.user][_] == username
+allow if {
+	some username
+	input.method == "GET"
+	input.path = ["finance", "salary", username]
+	username in subordinates[input.user]
 }

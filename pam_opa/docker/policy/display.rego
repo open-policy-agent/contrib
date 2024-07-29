@@ -2,7 +2,10 @@
 # in the PAM configuration file.
 package display
 
-display_spec = [
+import rego.v1
+
+# regal ignore:rule-name-repeats-package
+display_spec := [
 	{
 		"message": "Welcome to the OPA-PAM demonstration.",
 		"style": "info",
