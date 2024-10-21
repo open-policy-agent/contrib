@@ -268,6 +268,7 @@ multi_table_assert_cases = [
         'simple join',
         {},
         '''package test
+
         p {
             data.q[x].a = data.r[y].b
         }''',
@@ -334,7 +335,7 @@ def test_compile_multi_table(note, input, policy, exp_defined, exp_sql):
         if isinstance(clause, str):
             clauses.append('WHERE ' + clause)
         else:
-            joins = ' '.join('INNER JOIN ' + t for t in clause[0])
+            joins = ' '.join('INNER JOIN ' + t for t in sorted(clause[0]))
             clauses.append(joins + ' ON ' + clause[1])
     crunch(
         'data.test.p = true',

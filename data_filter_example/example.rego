@@ -24,7 +24,8 @@ allow if {
 allow if {
 	input.method == "GET"
 	input.path == ["posts"]
-	count(allowed) > 0
+	some post in data.posts
+	allowed[post]
 }
 
 allowed contains post if {

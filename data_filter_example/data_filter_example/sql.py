@@ -12,7 +12,7 @@ class InnerJoin(object):
         self.expr = expr
 
     def sql(self, **kwargs):
-        return ' '.join(['INNER JOIN ' + t for t in self.tables]) + ' ON ' + self.expr.sql(**kwargs)
+        return ' '.join(['INNER JOIN ' + t for t in sorted(self.tables)]) + ' ON ' + self.expr.sql(**kwargs)
 
 
 class Where(object):
@@ -80,6 +80,14 @@ class Constant(object):
             if isinstance(self.value, str):
                 return "'" + self.value + "'"
         return json.dumps(self.value)
+    
+
+class Array(object):
+    def __init__(self, values):
+        self.values = values
+
+    def sql(self, **kwargs):
+        return '(' + ', '.join(e.sql(**kwargs) for e in self.values) + ')'
 
 
 class RelationOp(object):
