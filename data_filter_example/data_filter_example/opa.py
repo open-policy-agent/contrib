@@ -109,6 +109,7 @@ def compile_http(query, input, unknowns):
     body = response.json()
     if response.status_code != 200:
         raise Exception('%s: %s' % (body.code, body.message))
+    print("body: ", json.dumps(body, indent=2))
     return body.get('result', {}).get('queries', [])
 
 
@@ -149,7 +150,7 @@ def compile(q, input, unknowns, from_table=None, compile_func=None):
         compile_func = compile_http
 
     queries = compile_func(query=q, input=input, unknowns=['data.' + u for u in unknowns])
-
+    
     # Check if query is never or always defined.
     if len(queries) == 0:
         return Result(False, None)
@@ -185,6 +186,7 @@ class queryTranslator(object):
 
     # Maps supported Rego relational operators to SQL relational operators.
     _sql_relation_operators = {
+        "internal.member_2": "in",
         'eq': '=',
         'equal': '=',
         'neq': '!=',
@@ -223,7 +225,9 @@ class queryTranslator(object):
         if isinstance(node, ast.Query):
             self._translate_query(node)
         elif isinstance(node, ast.Expr):
-            self._translate_expr(node)
+            print(f"translation expr: {node} ({node.__class__})")
+            if not node.ignore:
+                self._translate_expr(node)
         elif isinstance(node, ast.Term):
             self._translate_term(node)
         else:
@@ -263,6 +267,7 @@ class queryTranslator(object):
     def _translate_term(self, node):
         """Pushes an element onto the operand stack."""
         v = node.value
+        print(f"Translating term {v}")
         if isinstance(v, ast.Scalar):
             self._operands[-1].append(sql.Constant(v.value))
         elif isinstance(v, ast.Ref) and len(v.terms) == 3:
@@ -281,6 +286,8 @@ class queryTranslator(object):
                 walk.walk(term, self)
             sql_operands = self._operands.pop()
             self._operands[-1].append(sql.Call(sql_op, sql_operands))
+        elif isinstance(v, ast.Array):
+            self._operands[-1].append(sql.Array([sql.Constant(t.value.value) for t in v.terms]))
         else:
             raise TranslationError('invalid term: type not supported: %s' % v.__class__.__name__)
 
@@ -289,7 +296,7 @@ class queryPreprocessor(object):
     """Implements the visitor pattern to preprocess refs in the Rego query set.
     Preprocessing the Rego query set simplifies the translation process.
 
-    Refs are rewritten to correspond directly to SQL tables aand columns.
+    Refs are rewritten to correspond directly to SQL tables and columns.
     Specifically, refs of the form data.foo[var].bar are rewritten as
     data.foo.bar. Similarly, if var is dereferenced later in the query, e.g.,
     var.baz, that will be rewritten as data.foo.baz."""
@@ -297,19 +304,37 @@ class queryPreprocessor(object):
     def __init__(self):
         self._table_names = []
         self._table_vars = {}
+        self._equal_vars = {}
+        self.cur_operator = None
 
     def process(self, query_set):
         walk.walk(query_set, self)
 
     def __call__(self, node):
+        print(f"calling preprocess with: {node} ({node.__class__})")
         if isinstance(node, ast.Query):
             self._table_names.append({})
             self._table_vars = {}
         elif isinstance(node, ast.Expr):
+            node.ignore = False
             if node.is_call():
+                print("Expr operator: ", node.op())
+                if node.op() == "eq":
+                    all_variables = True 
+                    for o in node.operands:
+                        print(f"Operand {o} ({o.__class__})")
+                        if not isinstance(o.value, ast.Ref):
+                            all_variables = False
+                        elif isinstance(o.value.operand(-1), ast.Var) and "__local" in o.value.operand(-1).value:
+                            all_variables = False 
+                    if all_variables:
+                        # Throw out expression
+                        node.ignore = True
+                        return None
                 # Skip the built-in call operator.
                 for o in node.operands:
                     walk.walk(o, self)
+                self.cur_operator = None
                 return
         elif isinstance(node, ast.Call):
             # Skip the call operator.
@@ -341,7 +366,14 @@ class queryPreprocessor(object):
             # Keep track of iterators used for each table. We do not support
             # self-joins currently. Self-joins require namespacing in the SQL
             # query.
+            print("node: ", node)
+            print("row_id: ", row_id)
+
             exist = self._table_names[-1].get(table_name, row_id.value)
+            print("exist: ", exist )
+            print("table_names: ", self._table_names)
+            if self.cur_operator:
+                print(f"cur operator: {self.cur_operator.value.terms[0].value.value}, ({self.cur_operator.value.terms[0].value.value.__class__})")
             if exist != row_id.value:
                 raise TranslationError('invalid reference: self-joins not supported')
             else:

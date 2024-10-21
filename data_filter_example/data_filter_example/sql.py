@@ -80,6 +80,14 @@ class Constant(object):
             if isinstance(self.value, str):
                 return "'" + self.value + "'"
         return json.dumps(self.value)
+    
+
+class Array(object):
+    def __init__(self, values):
+        self.values = values
+
+    def sql(self, **kwargs):
+        return '(' + ', '.join(e.sql(**kwargs) for e in self.values) + ')'
 
 
 class RelationOp(object):

@@ -99,7 +99,7 @@ def login():
     if user in USERS:
         for c in COOKIES:
             if c in USERS[user]:
-                response.set_cookie(c, base64.b64encode(json.dumps(USERS[user][c])))
+                response.set_cookie(c, json.dumps(USERS[user][c]))
     return response
 
 
@@ -120,7 +120,7 @@ def make_subject():
     for c in COOKIES:
         v = flask.request.cookies.get(c, '')
         if v:
-            subject[c] = json.loads(base64.b64decode(v))
+            subject[c] = json.loads(v)
     return subject
 
 
@@ -164,6 +164,7 @@ def init_db():
 
 
 def query_db(query, args=(), one=False):
+    print("Resulting query: ", query)
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
     cur.close()

@@ -268,8 +268,12 @@ multi_table_assert_cases = [
         'simple join',
         {},
         '''package test
-        p {
-            data.q[x].a = data.r[y].b
+        import rego.v1
+
+        p if {
+            some x in data.q
+            some y in data.r
+            x.a = y.b
         }''',
         True,
         [[['r'], '(q.a = r.b)']],
