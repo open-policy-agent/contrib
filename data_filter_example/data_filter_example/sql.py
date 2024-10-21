@@ -12,7 +12,7 @@ class InnerJoin(object):
         self.expr = expr
 
     def sql(self, **kwargs):
-        return ' '.join(['INNER JOIN ' + t for t in self.tables]) + ' ON ' + self.expr.sql(**kwargs)
+        return ' '.join(['INNER JOIN ' + t for t in sorted(self.tables)]) + ' ON ' + self.expr.sql(**kwargs)
 
 
 class Where(object):
