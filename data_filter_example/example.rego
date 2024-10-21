@@ -24,7 +24,7 @@ allow if {
 allow if {
 	input.method == "GET"
 	input.path == ["posts"]
-	some post in data.posts 
+	some post in data.posts
 	allowed[post]
 }
 
