@@ -64,6 +64,7 @@ def generate_package(coverage: OPACoverage) -> ET.Element:
     package.append(classes)
     for path, data in coverage.files.items():
         if isinstance(data, dict):
+            data["coverage"] = data.get("coverage", 0)
             data = FileCoverage(**data)
         class_data = ET.Element("class", attrib={
             "complexity": "0",
