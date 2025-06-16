@@ -68,10 +68,22 @@ function _M.execute(conf)
         return kong.response.exit(500, [[{"message":"An error occurred while authorizing the request."}]])
     end
 
-    -- when the policy fail, 'result' is omitted
-    if not res.result then
-        kong.log.info("Access forbidden")
-        return kong.response.exit(403, [[{"message":"Access Forbidden"}]])
+    -- Handle both boolean and object formats
+    if type(res.result) == "boolean" then
+        if not res.result then
+            kong.log.info("Access forbidden - boolean result is false")
+            return kong.response.exit(403, [[{"message":"Access Forbidden"}]])
+        end
+    elseif type(res.result) == "table" then
+        if not res.result.allow then
+            local status_code = res.result.status or 403
+            local message = res.result.message or "Access Forbidden"
+            kong.log.info("Access forbidden - object result.allow is false/nil")
+            return kong.response.exit(status_code, cjson_safe.encode({message = message}))
+        end
+    else
+        kong.log.err("Invalid result type: " .. type(res.result))
+        return kong.response.exit(500, [[{"message":"Invalid policy result format"}]])
     end
 
     -- access allowed
