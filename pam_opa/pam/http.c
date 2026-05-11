@@ -57,7 +57,7 @@ int http_request(const char * method, const char* endpoint, char *req_body, json
 	pam_log(LOG_PRIORITY_DEBUG, "HTTP request body: %s", req_body);
 
 	if (result_j != NULL) {
-		*result_j = NULL; // Enables callers to check if errors occured.
+		*result_j = NULL; // Enables callers to check if errors occurred.
 	}
 
 	CURL* curl_handle = curl_easy_init();
@@ -139,7 +139,7 @@ int http_request(const char * method, const char* endpoint, char *req_body, json
 
 		if (!json_is_object(resp_body_j)) {
 			return json_error_ret_int(resp_body_j, resp_code,
-				"top level value of JSON response recieved is not type object");
+				"top level value of JSON response received is not type object");
 		}
 
 		json_t *result_j_actual = json_object_get(resp_body_j, "result");
