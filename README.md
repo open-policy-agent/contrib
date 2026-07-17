@@ -28,6 +28,8 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Grafana Dashboard](./grafana-dashboard)
 - [OpenAPI Specification for OPA](./open_api)
 - [SonarCloud Test Coverage Conversion](./sonarcloud)
+- [AuthZEN Interop](./authzen)
+- [WebAssembly](./wasm)
 
 For a comprehensive list of integrations, see the OPA [ecosystem](https://www.openpolicyagent.org/docs/latest/ecosystem/) page.
 
