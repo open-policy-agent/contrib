@@ -19,6 +19,7 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Data Filtering (Azure)](./data_filter_azure)
 - [Cloud Foundry Policies](./cloud_foundry)
 - [Decision Logger Plugin](./decision_logger_plugin_example)
+- [Server Logger Plugin (OTLP)](./otlp_server_logger)
 - [IPTables (Linux)](./opa-iptables)
 - [IPTables (Envoy)](./envoy_iptables)
 - [JUnit Test Format Conversion](./junit)
