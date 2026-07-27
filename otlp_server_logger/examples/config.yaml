@@ -1,0 +1,12 @@
+services:
+  otel-collector:
+    url: https://otel-collector.monitoring.svc.cluster.local:4317
+
+plugins:
+  otlp_server_logger:
+    service: otel-collector
+    type: grpc               # required: identifies the OTLP transport protocol
+    level: info
+
+server:
+  logger_plugin: otlp_server_logger
