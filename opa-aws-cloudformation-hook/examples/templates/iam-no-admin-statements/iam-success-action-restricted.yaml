@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  UserWithEc2InlinePolicy:
+    Type: AWS::IAM::User
+    Properties: 
+      PermissionsBoundary: 'arn:aws:iam::555555555555:policy/s3_deny_permissions_boundary'
+      Policies: 
+        - PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'ec2:*'
+                Resource: '*'
+          PolicyName: test
+      UserName: WithInlineEc2Policy

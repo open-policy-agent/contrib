@@ -33,7 +33,7 @@ jobs:
     - name: Setup Regal
       uses: open-policy-agent/setup-regal@761188c3b435761fa254beca508a44875619648f # v2.0.0
       with:
-        version: v0.24.0
+        version: v0.42.0
 
     - name: Regal Lint
       run: regal lint --format github .

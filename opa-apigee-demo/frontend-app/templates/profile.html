@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block body %}
+<div>
+   <h1 class="text-center">Profile</h1>
+</div>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>Property</th>
+        <th>Value</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for key, claim in profile.items() %}
+    <tr>
+        <td>{{ key }}</td>
+        <td id="claim-{{ key }}">
+            {{ claim }}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

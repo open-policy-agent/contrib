@@ -1,0 +1,18 @@
+{
+    "properties": {
+        "opaUrl": {
+            "description": "URL pointing to an OPA instance for policy decisions",
+            "type": "string"
+        },
+        "opaAuthTokenSecret": {
+            "description": "ARN referencing a Secret in Secrets Manager containing a plain-text string token to use for authenticating against the OPA instance",
+            "type": "string"
+        }
+    },
+    "required": [
+        "OpaUrl"
+    ],
+    "additionalProperties": false,
+    "definitions": {},
+    "typeName": "OpenPolicyAgent::OPA::Hook"
+}

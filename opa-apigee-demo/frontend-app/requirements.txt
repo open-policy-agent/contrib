@@ -1,0 +1,5 @@
+Flask>=1.0.0
+flask-oidc>=1.4.0
+okta==0.0.4
+requests
+zappa

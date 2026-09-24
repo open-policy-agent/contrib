@@ -1,0 +1,61 @@
+############################################################
+# OPA Deployment for the Apigee JS callout.
+############################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+      name: opa
+    spec:
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 1
+      containers:
+        - image: openpolicyagent/opa:0.20.5
+          name: opa
+          ports:
+          - containerPort: 8181
+          args:
+          - "run"
+          - "--server"
+          - "/policy/policy.rego"
+          resources:
+            requests:
+              cpu: "0.5"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "2048Mi"
+          livenessProbe:
+            httpGet:
+              path: /health?plugins
+              scheme: HTTP
+              port: 8181
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health?plugins
+              scheme: HTTP
+              port: 8181
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - readOnly: true
+              mountPath: /policy
+              name: opa-policy
+      volumes:
+        - name: opa-policy
+          configMap:
+            name: opa-policy

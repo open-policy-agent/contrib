@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opa-policy
+data:
+  policy.rego: |
+    package authz
+
+    default allow = false
+
+    token = {"payload": payload} { io.jwt.decode(input.token, [_, payload, _]) }
+
+    response["enrolleeClaimSummaryList"] = input.object.enrolleeClaimSummaryList {
+        allow_own
+    }
+
+    response["enrolleeClaimSummaryList"] = result {
+        allow_other
+        result = [ claim | val := input.object.enrolleeClaimSummaryList[_]; claim := filter(val) ]
+    }
+
+    # filter out the "procedure" field from the claim object
+    filter(claim) = result {
+        result := {key: val | val := claim[key]; key != "procedure"  }
+    }
+
+    # rule to authorize incoming requests
+    allow {
+      input.path = ["v1", "claims", "enrollee", enrollee_id]
+      input.method == "GET"
+    }
+
+    # users can see their own claims
+    allow_own {
+      input.path = ["dev", "v1", "claims", "enrollee", enrollee_id]
+      input.method == "GET"
+      token.payload.enrolleeId == input.object.enrolleeId
+    }
+
+    # primary can see the claims of secondary users less than 18
+    allow_other {
+      input.path = ["dev", "v1", "claims", "enrollee", enrollee_id]
+      input.method == "GET"
+      token.payload.enrolleeType == "primary"
+      input.object.enrolleeAge < 18
+      token.payload.enrolleeId == input.object.enrolleePrimaryId
+    }
+
+    # primary can see claims of secondary users greater than / equal to 18 if they have signed a waiver
+    allow_other {
+      input.path = ["dev", "v1", "claims", "enrollee", enrollee_id]
+      input.method == "GET"
+      token.payload.enrolleeType == "primary"
+      input.object.enrolleeAge >= 18
+      input.object.canPrimaryViewClaims == true
+      token.payload.enrolleeId == input.object.enrolleePrimaryId
+    }

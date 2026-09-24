@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+  <h1 class="text-center">Dashboard</h1>
+  <div class="row">
+    <div class="col-sm-8 offset-sm-2">
+      <p>Welcome to the dashboard, <strong>{{ g.user.profile.firstName }}</strong>! Click a button to view claims.</p>
+    </div>
+  </div>
+  {% for user in users %}
+    <div class="row">
+        <div class="col-sm-8 offset-sm-2">
+            <p><a href="/dev/v1/claims/enrollee/{{ user }}"><input type="button" value="See {{ user[0]|upper}}{{user[1:] }}'s Claims" style="width: 25%;"></a></p>
+        </div>
+    </div>
+  {% endfor %}
+  {% if status == 200 %}
+      <hr>
+      <div class="row">
+         <div class="col-sm-8 offset-sm-2">
+             <p>{% for claim in claims %}
+                 <div>
+                    {% for key, value in claim.items() %}
+                        <p>{{key}} {{":"}} {{value}}</p>
+                    {% endfor %}
+                </div><br>
+                {% endfor %}
+             </p>
+         </div>
+      </div>
+  {% endif %}
+  {% if status == 403 %}
+      <hr>
+      <br>
+      <div class="row">
+          <div class="col-sm-8 offset-sm-2">
+              {% for key, value in error.items() %}
+                  <p style="color:red;">{{key}} {{":"}} {{value}}</p>
+              {% endfor %}
+          </div>
+      </div>
+  {% endif %}
+{% endblock %}

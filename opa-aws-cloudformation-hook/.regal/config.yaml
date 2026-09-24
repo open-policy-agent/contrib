@@ -1,0 +1,22 @@
+rules:
+  custom:
+    one-liner-rule:
+      level: error
+  imports:
+    prefer-package-imports:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
+  style:
+    line-length:
+      level: error
+      non-breakable-word-threshold: 80
+    rule-name-repeats-package:
+      level: ignore
+  testing:
+    print-or-trace-call:
+      level: error
+      ignore:
+        files:
+          - "assertions.rego"

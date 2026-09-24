@@ -1,0 +1,20 @@
+name: Check for resource type updates
+
+on:
+  schedule:
+    # Sundays at 01:00
+    - cron: "00 1 * * 0"
+  workflow_dispatch:
+
+jobs:
+  check-for-updates:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    - name: Setup OPA
+      uses: open-policy-agent/setup-opa@v2
+
+    - name: Check for updated resource types
+      run: ci/check-resource-types.sh

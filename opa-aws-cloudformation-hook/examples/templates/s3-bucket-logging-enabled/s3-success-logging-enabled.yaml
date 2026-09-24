@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: 'baseline-opa-bucket'
+      LoggingConfiguration:
+        DestinationBucketName: 'my-logging-bucket'
+        LogFilePrefix: 's3-logs-baseline-opa-bucket'

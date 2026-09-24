@@ -1,0 +1,30 @@
+ignore:
+  files:
+  # imported subprojects are kept as-is from their source repos and are
+  # not linted as part of this repo's own style checks
+  - "academy-samples/**"
+  - "graphql-apollo-example/**"
+  - "opa-apigee-demo/**"
+  - "opa-aws-cloudformation-hook/**"
+  # pre-existing projects that fail under the newer Regal ruleset
+  # (bumped from v0.24.0 to v0.42.0), not touched by this change
+  - "api_authz/**"
+  - "authzen/**"
+  - "cloud-foundry/**"
+  - "cobertura/**"
+  - "custom_bundle_signing/**"
+  - "dart_authz/**"
+  - "data_filter_azure/**"
+  - "data_filter_elasticsearch/**"
+  - "data_filter_example/**"
+  - "data_filter_mongodb/**"
+  - "image_enforcer/**"
+  - "k8s_api_client/**"
+  - "k8s_authorization/**"
+  - "k8s_node_selector/**"
+  - "kafka_authorizer/**"
+  - "pam_opa/**"
+  - "puppet_example/**"
+  - "simplecov/**"
+  - "sonarcloud/**"
+  - "wasm/**"

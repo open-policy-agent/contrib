@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: "2010-09-09" 
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket 
+    Properties: {}
+
+  EncryptedS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
