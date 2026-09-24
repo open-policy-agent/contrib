@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This CloudFormation template provisions an encrypted S3 Bucket
+Resources:
+  EncryptedS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: 'secure-cfn-bucket-encrypted'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !Ref EncryptionKey
+            BucketKeyEnabled: true
+      Tags: 
+        - Key: "keyname1"
+          Value: "value1"
+
+  EncryptionKey:  
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    Properties:
+     Description: KMS key used to encrypt the resource type artifacts
+     EnableKeyRotation: true
+     KeyPolicy:
+      Version: "2012-10-17"
+      Statement:
+      - Sid: Enable full access for owning account
+        Effect: Allow
+        Principal: 
+          AWS: !Ref "AWS::AccountId"
+        Action: kms:*
+        Resource: "*"
+
+Outputs:
+  EncryptedBucketName:
+    Value: !Ref EncryptedS3Bucket

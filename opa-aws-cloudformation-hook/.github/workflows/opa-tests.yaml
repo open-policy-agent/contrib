@@ -1,0 +1,64 @@
+name: OPA Tests
+
+on: [push]
+
+jobs:
+  opa-unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [latest, 0.60.x]
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    - name: Setup OPA
+      uses: open-policy-agent/setup-opa@v2
+      with:
+        version: ${{ matrix.version }}
+
+    - name: OPA unit tests
+      run: opa test -v examples/policy/
+
+    - name: OPA check strict
+      run: opa check --strict examples/policy/
+
+  opa-integration-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [latest, 0.60.x]
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    - name: Setup OPA
+      uses: open-policy-agent/setup-opa@v2
+      with:
+        version: ${{ matrix.version }}
+
+    - name: Install pip dependencies
+      run: pip3 install -r test/requirements.txt
+
+    - name: OPA integration tests
+      run: test/integration.sh
+
+  regal-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+
+      - name: OPA check strict
+        run: opa check --strict .
+
+      - name: Setup Regal
+        uses: open-policy-agent/setup-regal@v2
+        with:
+          version: latest
+
+      - name: Regal Lint
+        run: regal lint --format github .

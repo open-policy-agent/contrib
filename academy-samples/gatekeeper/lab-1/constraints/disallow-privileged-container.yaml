@@ -1,0 +1,12 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sPSPPrivilegedContainer
+metadata:
+  name: disallow-privileged-container
+spec:
+  match:
+    namespaces:
+      - "default"            # apply to the "default" namespace
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]       # apply to Pods
+  enforcementAction: dryrun  # "dryrun" does not block non-compliant requests

@@ -1,0 +1,19 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredResources
+metadata:
+  name: require-container-limits-and-requests
+spec:
+  parameters:
+    limits:
+      - cpu                  # require cpu limit
+      - memory               # require memory limit
+    requests:
+      - cpu                  # require cpu request
+      - memory               # require memory request
+  match:
+    namespaces:
+      - "default"            # apply to "default" namespace
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]       # apply to Pods
+  enforcementAction: dryrun  # "dryrun" does not block non-compliant requests

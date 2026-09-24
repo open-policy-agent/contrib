@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>OPA Apigee Demo | {% block title %}{% endblock %}</title>
+  </head>
+  <body>
+    <div class="d-flex flex-column flex-md-row align-items-center p-3 px-md-4 mb-3 bg-white border-bottom box-shadow">
+      <h5 class="my-0 mr-md-auto font-weight-normal">OPA Apigee Demo</h5>
+      <nav class="my-2 my-md-0 mr-md-3">
+        <a class="p-2 text-dark" href="/dev" title="Home">Home</a>
+        {% if not g.user %}
+          <a class="p-2 text-dark" href="/dev/login">Log In / Register</a>
+        {% else %}
+          <a class="p-2 text-dark" href="/dev/dashboard">Dashboard</a>
+          <a class="p-2 text-dark" href="/dev/profile">Profile</a>
+          <a class="p-2 text-dark" href="/dev/logout">Logout</a>
+        {% endif %}
+      </nav>
+    </div>
+    <div class="container">
+      {% block body %}{% endblock %}
+    </div>
+  </body>
+</html>

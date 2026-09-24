@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  UserWithAdminInlinePolicy:
+    Type: AWS::IAM::User
+    Properties: 
+      Policies: 
+        - PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: '*'
+                Resource: '*'
+          PolicyName: test
+      UserName: WithInlineAdminPolicy

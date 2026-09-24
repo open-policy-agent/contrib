@@ -1,0 +1,8 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  IAMUserTest:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: 'excluded-cfn-hooks-user'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSDenyAll

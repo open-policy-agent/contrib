@@ -1,0 +1,21 @@
+{
+    "artifact_type": "HOOK",
+    "typeName": "OpenPolicyAgent::OPA::Hook",
+    "language": "python37",
+    "runtime": "python3.7",
+    "entrypoint": "opa_hook.handlers.hook",
+    "testEntrypoint": "opa_hook.handlers.test_entrypoint",
+    "settings": {
+        "version": false,
+        "subparser_name": null,
+        "verbose": 0,
+        "force": false,
+        "type_name": null,
+        "artifact_type": null,
+        "endpoint_url": null,
+        "region": null,
+        "target_schemas": [],
+        "use_docker": true,
+        "protocolVersion": "2.0.0"
+    }
+}

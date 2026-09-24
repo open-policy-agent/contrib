@@ -28,6 +28,10 @@ This repository holds integrations, examples, and proof-of-concepts that work wi
 - [Grafana Dashboard](./grafana-dashboard)
 - [OpenAPI Specification for OPA](./open_api)
 - [SonarCloud Test Coverage Conversion](./sonarcloud)
+- [AWS CloudFormation Hook](./opa-aws-cloudformation-hook)
+- [OPA Academy Course Samples](./academy-samples)
+- [GraphQL API Authorization (Apollo)](./graphql-apollo-example)
+- [Apigee API Authorization](./opa-apigee-demo)
 
 For a comprehensive list of integrations, see the OPA [ecosystem](https://www.openpolicyagent.org/docs/latest/ecosystem/) page.
 

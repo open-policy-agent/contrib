@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  EksCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      RoleArn: "<MY_EKS_SERVICE_ROLE_ARN>"
+      ResourcesVpcConfig:
+        SubnetIds: ["<MY_SUBNET_ID>"]
+        EndpointPublicAccess: false
+        EndpointPrivateAccess: true
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+          - {Type: audit}
+          - {Type: authenticator}

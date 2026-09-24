@@ -1,0 +1,32 @@
+name: Generate Zip File
+
+on:
+  workflow_run:
+    workflows: [OPA Tests]
+    types:
+      - completed
+
+jobs:
+  generate-zip-file:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    - name: Setup python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3
+
+    - name: Install and run cfn cli
+      run: |
+        cd hooks
+        pip install --quiet cloudformation-cli cloudformation-cli-python-plugin
+        cfn submit --dry-run
+
+    - name: Upload zip file as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: hook-package-zip
+        path: hooks/opa-hook.zip
